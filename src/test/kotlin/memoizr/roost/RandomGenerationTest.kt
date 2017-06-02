@@ -19,6 +19,7 @@ class RandomGenerationTest {
     val aNullableClass by aRandom<NullableClass>()
     val aRecursiveClass by aRandom<RecursiveClass>()
     val anotherRecursiveClass by aRandom<RecursiveClass>()
+    val aClassWithEnum by aRandom<ClassWithEnum>()
 
     @Test
     fun `creates an arbitrary data class`() {
@@ -44,26 +45,47 @@ class RandomGenerationTest {
 
         expect that groupedValues[0].second isCloseTo groupedValues[1].second withinPercentage 5
     }
-    
+
     @Test
     fun `it creates objects recursively`() {
         expect that aRecursiveClass isInstance of<RecursiveClass>()
         expect that aRecursiveClass.sample isEqualTo aRecursiveClass.sample
     }
-    
+
     @Test
-    fun `it creates different objects for different property names`() {
+    fun `it creates different objects for different property values`() {
         expect that aSimpleClass isInstance of<SimpleClass>()
         expect that anotherSimpleClass isInstance of<SimpleClass>()
         expect that aSimpleClass isNotEqualTo anotherSimpleClass
         expect that anotherSimpleClass.name isEqualTo anotherSimpleClass.name
         expect that anotherRecursiveClass.sample isEqualTo anotherRecursiveClass.sample
     }
+
+    @Test
+    fun `it generates random enums`() {
+        val enums = (1..10000).map {
+            Seed.seed = Random().nextLong()
+            aClassWithEnum.enum
+        }.groupBy { a -> a }
+
+        enums.forEach { t, u ->
+            expect that u.size isCloseTo 2500 withinPercentage 5
+        }
+
+        expect that enums.size isEqualTo 4
+
+        expect that aClassWithEnum.enum isInstance of<TheEnum>()
+    }
 }
 
 data class SimpleClass(val name: String)
 data class NullableClass(val name: String, val nullable: String?)
 data class RecursiveClass(val sample: SimpleClass, val nullableClass: NullableClass)
+data class ClassWithEnum(val enum: TheEnum)
+
+enum class TheEnum {
+    One, Two, Three, Four
+}
 
 internal object Seed {
     var seed: Long = Random().nextLong()
@@ -78,9 +100,10 @@ class aRandom<out T> {
         RandomStringUtils.random(Math.max(1, it.nextInt(Seed.maxStringLength)), 0, 59319, true, true, null, it)
     }
 
-    private fun <R: Any> instantiateClazz(klass: KClass<R>, token: String = ""): R {
+    private fun <R : Any> instantiateClazz(klass: KClass<R>, token: String = ""): R {
         return when {
             klass.java.canonicalName == String::class.java.canonicalName -> aString(token) as R
+            klass.java.isEnum -> klass.java.enumConstants[Random(Seed.seed).nextInt(klass.java.enumConstants.size)]
             klass == kotlin.String::class -> aString(token) as R
             else -> {
                 val constructors = klass.constructors.toList()
@@ -89,7 +112,7 @@ class aRandom<out T> {
                 val constructorParameters = defaultConstructor.parameters
                 defaultConstructor.call(*(constructorParameters.map {
                     if (it.type.isMarkedNullable && Random(Seed.seed).nextBoolean()) null else instantiateClazz(it.type.jvmErasure, "$token::${it.javaClass.canonicalName}")
-                }).toTypedArray()) as R
+                }).toTypedArray())
             }
         }
     }
