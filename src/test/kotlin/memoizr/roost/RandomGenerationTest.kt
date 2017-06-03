@@ -11,6 +11,7 @@ import java.math.BigDecimal
 import java.util.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KProperty
+import kotlin.reflect.KTypeProjection
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.jvmErasure
@@ -24,6 +25,10 @@ class RandomGenerationTest {
     val aClassWithEnum by aRandom<ClassWithEnum>()
     val aClassWithBigDecimal by aRandom<ClassWithBigDecimal>()
     val aSimpleCompoundClass by aRandom<SimpleCompoundClass>()
+    val aClassWithList by aRandom<ClassWithList>()
+    val aClassWithMutableList by aRandom<ClassWithMutableList>()
+    val aJavaClassWithList by aRandom<JavaClassWithList>()
+    val aClassWithPrimitives by aRandom<ClassWithPrimitives>()
 
     @Test
     fun `creates an arbitrary data class`() {
@@ -52,7 +57,6 @@ class RandomGenerationTest {
 
     @Test
     fun `it generates different values for each parameter`() {
-        println(aSimpleCompoundClass)
         expect that aSimpleCompoundClass.simpleClass.name isEqualTo aSimpleCompoundClass.simpleClass.name
         expect that aSimpleCompoundClass.simpleClass.name isNotEqualTo aSimpleCompoundClass.otherSimpleClass.otherName
     }
@@ -92,7 +96,35 @@ class RandomGenerationTest {
 
         expect that aClassWithBigDecimal isInstance of<ClassWithBigDecimal>()
     }
+
+    @Test
+    fun `it generates an empty list`() {
+        expect that aJavaClassWithList.list isEqualTo aJavaClassWithList.list
+        expect that aClassWithList.list isEqualTo aClassWithList.list
+//        expect that aClassWithList.list.size isEqualTo Random(Seed.seed).nextInt(10) + 1
+        expect that aClassWithMutableList.list.plus("hey") contains mutableListOf("hey")
+    }
+
+    @Test
+    fun `covers all the primitives`() {
+        expect that aClassWithPrimitives isEqualTo aClassWithPrimitives
+    }
+
+    val aSimpleClassCustomized by aRandom<SimpleClass> { copy(name = "foo") }
+
+    @Test
+    fun `objects can be customized`() {
+        expect that aSimpleClassCustomized.name isEqualTo "foo"
+    }
+
+    val aCyclicClass by aRandom<CyclicClass>()
+    @Test
+    fun `does not allow for recursive classes`() {
+        expect thatThrownBy { aCyclicClass } hasMessageContaining "cyclic"
+    }
 }
+
+class CyclicException : Throwable("Illegal cyclic dependency")
 
 data class SimpleClass(val name: String)
 data class OtherSimpleClass(val otherName: String)
@@ -101,6 +133,19 @@ data class NullableClass(val name: String, val nullable: String?)
 data class RecursiveClass(val sample: SimpleClass, val nullableClass: NullableClass)
 data class ClassWithEnum(val enum: TheEnum)
 data class ClassWithBigDecimal(val bigDecimal: BigDecimal)
+data class ClassWithList(val list: List<String>)
+data class ClassWithMutableList(val list: MutableList<String>)
+data class CyclicClass(val cycles: List<CyclicClass>, val cycle: CyclicClass)
+data class ClassWithPrimitives(
+        val int: Int,
+        val short: Short,
+        val long: Long,
+        val float: Float,
+        val double: Double,
+        val boolean: Boolean,
+        val byte: Byte,
+        val char: Char
+)
 
 enum class TheEnum {
     One, Two, Three, Four
@@ -115,36 +160,66 @@ object Seed {
     val maxStringLength = 20
 }
 
-class aRandom<out T> {
+class aRandom<out T>(private val custom: T.() -> T = { this }) {
     operator fun getValue(hostClass: Any, property: KProperty<*>): T {
-        return instantiateClazz(property.returnType.jvmErasure, hostClass::class.java.canonicalName + "::" + property.name) as T
+        return (instantiateClazz(property.returnType.jvmErasure, hostClass::class.java.canonicalName + "::" + property.name) as T).let { custom(it) }
     }
 
-    fun aString(token: String = ""): String {
-        println(token)
-        fun hashString(string: String): Long = string.toByteArray().map(Byte::toLong).sum()
+    private fun hashString(string: String): Long = string.toByteArray().map(Byte::toLong).sum()
 
+    fun aString(token: String = ""): String {
         return Random(Seed.seed + hashString(token)).let {
             RandomStringUtils.random(Math.max(1, it.nextInt(Seed.maxStringLength)), 0, 59319, true, true, null, it)
         }
     }
 
-    private fun <R : Any> instantiateClazz(klass: KClass<R>, token: String = ""): R {
+    fun aChar(token: String = ""): Char = Random(Seed.seed + hashString(token)).nextInt(59319).toChar()
+    fun anInt(token: String = ""): Int = Random(Seed.seed + hashString(token)).nextInt()
+    fun aLong(token: String = ""): Long = Random(Seed.seed + hashString(token)).nextLong()
+    fun aDouble(token: String = ""): Double = Random(Seed.seed + hashString(token)).nextDouble()
+    fun aShort(token: String = ""): Short = Random(Seed.seed + hashString(token)).nextInt(Short.MAX_VALUE.toInt()).toShort()
+    fun aFloat(token: String = ""): Float = Random(Seed.seed + hashString(token)).nextFloat()
+    fun aByte(token: String = ""): Byte = Random(Seed.seed + hashString(token)).nextInt(255).toByte()
+
+    fun aBoolean(token: String = ""): Boolean {
+        return Random(Seed.seed + hashString(token)).nextBoolean()
+    }
+
+    private fun <R : Any> aList(typeParameter: KTypeProjection, token: String, past: Set<KClass<*>>): R {
+        val klass = typeParameter.type!!.jvmErasure
+        if (past.contains(klass)) throw CyclicException()
+        return (0..Random(Seed.seed + hashString(token)).nextInt(10)).map { instantiateClazz(klass, "$token::$it") } as R
+    }
+
+    private fun <R : Any> instantiateClazz(klass: KClass<R>, token: String = "", typeParameters: List<KTypeProjection> = emptyList(), past: Set<KClass<*>> = emptySet()): R {
+        if (past.contains(klass)) throw CyclicException()
         return when {
             Creator.objectFactory.contains(klass.java) -> {
-                println("hey")
                 Creator.objectFactory.get(klass.java)?.invoke() as R
             }
             klass.java.canonicalName == String::class.java.canonicalName -> aString(token) as R
-            klass.java.isEnum -> klass.java.enumConstants[Random(Seed.seed).nextInt(klass.java.enumConstants.size)]
+            klass.java.isEnum -> klass.java.enumConstants[Random(Seed.seed + hashString(token)).nextInt(klass.java.enumConstants.size)]
+            klass == kotlin.collections.List::class -> aList(typeParameters.first(), token, past.plus(klass))
             klass == kotlin.String::class -> aString(token) as R
+            klass == kotlin.Byte::class -> aByte(token) as R
+            klass == kotlin.Int::class -> anInt(token) as R
+            klass == kotlin.Long::class -> aLong(token) as R
+            klass == kotlin.Double::class -> aDouble(token) as R
+            klass == kotlin.Short::class -> aShort(token) as R
+            klass == kotlin.Short::class -> aShort(token) as R
+            klass == kotlin.Float::class -> aFloat(token) as R
+            klass == kotlin.Boolean::class -> aBoolean(token) as R
+            klass == kotlin.Char::class -> aChar(token) as R
             else -> {
                 val constructors = klass.constructors.toList()
-                val defaultConstructor = constructors[Random(Seed.seed).nextInt(constructors.size)]
+                val defaultConstructor = constructors[Random(Seed.seed + hashString(token)).nextInt(constructors.size)]
                 defaultConstructor.isAccessible = true
                 val constructorParameters = defaultConstructor.parameters
                 defaultConstructor.call(*(constructorParameters.map {
-                    if (it.type.isMarkedNullable && Random(Seed.seed).nextBoolean()) null else instantiateClazz(it.type.jvmErasure, "$token::${it.type.javaType.typeName}")
+                    val typeArguments: List<KTypeProjection> = it.type.arguments
+                    if (it.type.isMarkedNullable && Random(Seed.seed + hashString(token)).nextBoolean()) null else {
+                        instantiateClazz(it.type.jvmErasure, "$token::${it.type.javaType.typeName}", typeArguments, past.plus(klass))
+                    }
                 }).toTypedArray())
             }
         }
