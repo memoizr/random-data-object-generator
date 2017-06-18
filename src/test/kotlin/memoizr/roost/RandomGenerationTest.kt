@@ -117,10 +117,13 @@ class RandomGenerationTest {
     }
 
     val aRandomList by aRandomListOf<SimpleClass>()
+    val aRandomListOfList by aRandomListOf<List<List<List<SimpleClass>>>>()
     val aRandomListSize10 by aRandomListOf<SimpleClass>(size = 10)
 
     @Test
     fun `creates a random list`() {
+        expect that aRandomListOfList.size isGreaterThan 0
+        println(aRandomListOfList)
         expect that aRandomList.size isGreaterThan 0
         expect that aRandomListSize10.size isEqualTo 10
     }
