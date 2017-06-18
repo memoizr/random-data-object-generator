@@ -115,9 +115,55 @@ class RandomGenerationTest {
     fun `does not allow for recursive classes`() {
         expect thatThrownBy { aCyclicClass } hasMessageContaining "cyclic"
     }
+
+    val aRandomList by aRandomListOf<SimpleClass>()
+
+    @Test
+    fun `creates a random list`() {
+        println(aRandomList)
+        expect that aRandomList.size isGreaterThan 0
+    }
+
+    val aClassWithInterface by aRandom<AClassWithInterface>()
+
+    @Test
+    fun `it copes with interfaces in same package`() {
+        println(aClassWithInterface)
+        expect that aClassWithInterface.inter isInstance of<AnInterface>()
+    }
+
+    val aClassWithObject by aRandom<AClassWithObject>()
+    @Test
+    fun `it copes with objejcts`() {
+        expect that aClassWithObject.anObject isEqualTo AnObject
+    }
+
+//    @Test
+//    fun x() {
+//        Seed.seed = 1234
+//
+////        forAll { a: ClassWithList ->
+////            println(a)
+////        }
+//
+//        forAll { a: String, b: Int ->
+//            println("$a  $b")
+//            expect that b isGreaterThan 0
+//        }
+//    }
+
+
 }
+interface Foo
 
+//data class X(val x: String) : Foo()
+//data class Y(val x: String) : Foo()
 
+interface AnInterface
+object AnObject
+data class AClassWithObject(val anObject: AnObject)
+data class AnImplementation(val x: String): AnInterface
+data class AClassWithInterface(val inter: AnInterface, val foo: Foo)
 data class SimpleClass(val name: String)
 data class OtherSimpleClass(val otherName: String)
 data class SimpleCompoundClass(val simpleClass: SimpleClass, val otherSimpleClass: OtherSimpleClass)

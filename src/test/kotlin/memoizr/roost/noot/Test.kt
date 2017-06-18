@@ -1,5 +1,7 @@
-package memoizr.roost
+package memoizr.roost.noot
 
+import memoizr.roost.Foo
+import memoizr.roost.aRandom
 import org.junit.Test
 
 class Test {
@@ -21,3 +23,5 @@ data class User(
         val height: Float)
 
 data class Address(val lineOne: String, val lineTwo: String, val postCode: String)
+
+data class Z(val y: String) : Foo
