@@ -117,24 +117,24 @@ class RandomGenerationTest {
     }
 
     val aRandomList by aRandomListOf<SimpleClass>()
+    val aRandomListSize10 by aRandomListOf<SimpleClass>(size = 10)
 
     @Test
     fun `creates a random list`() {
-        println(aRandomList)
         expect that aRandomList.size isGreaterThan 0
+        expect that aRandomListSize10.size isEqualTo 10
     }
 
     val aClassWithInterface by aRandom<AClassWithInterface>()
 
     @Test
     fun `it copes with interfaces in same package`() {
-        println(aClassWithInterface)
         expect that aClassWithInterface.inter isInstance of<AnInterface>()
     }
 
     val aClassWithObject by aRandom<AClassWithObject>()
     @Test
-    fun `it copes with objejcts`() {
+    fun `it copes with objects`() {
         expect that aClassWithObject.anObject isEqualTo AnObject
     }
 

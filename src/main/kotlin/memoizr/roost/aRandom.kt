@@ -11,9 +11,9 @@ import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.jvmErasure
 
-class aRandomListOf<out T>() {
+class aRandomListOf<out T>(private val size: Int? = null) {
     operator fun getValue(hostClass: Any, property: KProperty<*>): List<T> {
-        return aList(KTypeProjection(KVariance.OUT, property.returnType.arguments.first().type), hostClass::class.java.canonicalName + "::" + property.name, emptySet())
+        return aList(KTypeProjection(KVariance.OUT, property.returnType.arguments.first().type), hostClass::class.java.canonicalName + "::" + property.name, emptySet(), size?.dec())
     }
 }
 
@@ -37,10 +37,11 @@ fun aBoolean(token: String = ""): Boolean {
     return Random(getSeed(token)).nextBoolean()
 }
 
-private fun <R : Any> aList(typeParameter: KTypeProjection, token: String, past: Set<KClass<*>>): R {
+private fun <R : Any> aList(typeParameter: KTypeProjection, token: String, past: Set<KClass<*>>, size: Int? = null): R {
     val klass = typeParameter.type!!.jvmErasure
     if (klass != List::class && past.contains(klass)) throw CyclicException()
-    return (0..Random(getSeed(token)).nextInt(10)).map { instantiateClazz(klass, "$token::$it", listOf(typeParameter)) } as R
+    val range = size ?: Random(getSeed(token)).nextInt(10)
+    return (0..range).map { instantiateClazz(klass, "$token::$it", listOf(typeParameter)) } as R
 }
 
 fun <R : Any> instantiateClazz(klass: KClass<R>, token: String = "", typeParameters: List<KTypeProjection> = emptyList(), past: Set<KClass<*>> = emptySet()): R {
@@ -67,12 +68,10 @@ fun <R : Any> instantiateClazz(klass: KClass<R>, token: String = "", typeParamet
             val allClasses = Reflections("", SubTypesScanner(false)).getSubTypesOf(klass.java)
             val implementations = allClasses.filter { klass.java.isAssignableFrom(it) }
             val implementation = implementations[Random(getSeed(token)).nextInt(implementations.size)]
-            println(implementation)
             instantiateClazz(implementation.kotlin, "$token::${implementation.name}")
         }
         else -> {
             val constructors = klass.constructors.toList()
-            println(klass)
             val defaultConstructor: KFunction<R> = constructors[Random(getSeed(token)).nextInt(constructors.size)]
             defaultConstructor.isAccessible = true
             val constructorParameters: List<KParameter> = defaultConstructor.parameters
