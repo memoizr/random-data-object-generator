@@ -8,6 +8,7 @@ import com.memoizr.assertk.of
 import org.junit.Test
 import java.math.BigDecimal
 import java.util.*
+import kotlin.collections.ArrayList
 
 class RandomGenerationTest {
     val aSimpleClass by aRandom<SimpleClass>()
@@ -141,16 +142,26 @@ class RandomGenerationTest {
         expect that aClassWithObject.anObject isEqualTo AnObject
     }
 
-    val x by aRandomListOf<SimpleClass>()
+
+    val aPair by aRandom<Pair<String, Int>>()
 
     @Test
-    fun `hello`() {
-        x.print()
+    fun `creates instances of generic classes`() {
+        expect that aPair.first isInstance of<String>()
+        expect that aPair.second isInstance of<Int>()
+    }
+
+    val aSet by aRandom<Set<String>>()
+
+    @Test
+    fun `creates a set`() {
+        expect that aSet.size isGreaterThan 0
     }
 }
 
 interface Foo
 
+class Lyst<T> : List<T> by ArrayList<T>()
 data class X(val x: String) : Foo
 data class Y(val x: String) : Foo
 

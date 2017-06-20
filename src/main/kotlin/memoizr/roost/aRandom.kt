@@ -1,5 +1,6 @@
 package memoizr.roost
 
+import com.sun.deploy.util.ReflectionUtil.isSubclassOf
 import org.apache.commons.lang3.RandomStringUtils
 import org.reflections.Reflections
 import org.reflections.scanners.SubTypesScanner
@@ -7,6 +8,8 @@ import java.security.SecureRandom.getSeed
 import java.util.*
 import kotlin.reflect.*
 import kotlin.reflect.full.createType
+import kotlin.reflect.full.isSubclassOf
+import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
@@ -15,7 +18,6 @@ import kotlin.reflect.jvm.jvmErasure
 class aRandomListOf<out T: Any>(private val size: Int? = null) {
     operator fun getValue(hostClass: Any, property: KProperty<*>): List<T> {
         val type = property.returnType.arguments.first().type
-        println("tpe ${property.returnType}")
         return aList(KTypeProjection(KVariance.OUT, type), hostClass::class.java.canonicalName + "::" + property.name, emptySet(), size?.dec())
     }
 }
@@ -43,7 +45,6 @@ private fun <R : Any> aList(typeProjection: KTypeProjection, token: String, past
     val range = size ?: Random(getSeed(token)).nextInt(10)
     return if (klass == List::class) {
         (0..range).map {
-//            instantiateClazz<R>(typeProjection.type!!.arguments.print().first().type!!, "$token::$it")
             aList<R>(typeProjection.type!!.arguments.first(), "$token::$it", past)
         } as R
     } else {
@@ -69,7 +70,8 @@ private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Se
         }
         klass.java.canonicalName == String::class.java.canonicalName -> aString(token) as R
         klass.java.isEnum -> klass.java.enumConstants[Random(getSeed(token)).nextInt(klass.java.enumConstants.size)] as R
-        klass == kotlin.collections.List::class -> aList<R>(type.arguments.print().first(), token, past.plus(klass)) as R
+        klass == kotlin.collections.List::class -> aList<R>(type.arguments.first(), token, past.plus(klass)) as R
+        klass == kotlin.collections.Set::class -> (aList<R>(type.arguments.first(), token, past.plus(klass)) as List<*>).toSet() as R
         klass == kotlin.String::class -> aString(token) as R
         klass == kotlin.Byte::class -> aByte(token) as R
         klass == kotlin.Int::class -> anInt(token) as R
@@ -95,13 +97,15 @@ private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Se
         }
         else -> {
             val constructors = klass.constructors.toList()
-            val defaultConstructor: KFunction<R> = constructors[Random(getSeed(token)).nextInt(constructors.size)] as KFunction<R>
+            val defaultConstructor: KFunction<R> =  constructors[Random(getSeed(token)).nextInt(constructors.size)] as KFunction<R>
             defaultConstructor.isAccessible = true
             val constructorParameters: List<KParameter> = defaultConstructor.parameters
+            val params = type.arguments.toMutableList()
             defaultConstructor.call(*(constructorParameters.map {
-                instantiateClazz<Any>(it.type, "$token::${it.type.javaType.typeName}", past.plus(klass))
+                val tpe = if (it.type.jvmErasure == Any::class) params.removeAt(0).type!! else it.type
+                instantiateClazz<Any>(tpe, "$token::${tpe.javaType.typeName}::$it", past.plus(klass))
                 if (it.type.isMarkedNullable && Random(getSeed(token)).nextBoolean()) null else {
-                    instantiateClazz<Any>(it.type, "$token::${it.type.javaType.typeName}", past.plus(klass))
+                    instantiateClazz<Any>(tpe, "$token::${tpe.javaType.typeName}::$it", past.plus(klass))
                 }
             }).toTypedArray())
         }
