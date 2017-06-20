@@ -41,7 +41,7 @@ private fun aBoolean(token: String = ""): Boolean = Random(getSeed(token)).nextB
 
 private fun <R : Any> aList(typeProjection: KTypeProjection, token: String, past: Set<KClass<*>>, size: Int? = null): R {
     val klass = typeProjection.type!!.jvmErasure
-    if (klass != List::class && past.contains(klass)) throw CyclicException()
+    if ((klass != List::class && klass != Set::class && klass != Map::class) && past.contains(klass)) throw CyclicException()
     val range = size ?: Random(getSeed(token)).nextInt(10)
     return if (klass == List::class) {
         (0..range).map {
@@ -63,7 +63,7 @@ internal fun <T: Any> T.print() = this.apply{
 
 private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Set<KClass<*>> = emptySet()): R {
     val klass = type.jvmErasure
-    if (klass != List::class && past.contains(klass)) throw CyclicException()
+    if ((klass != List::class && klass != Set::class && klass != Map::class) && past.contains(klass)) throw CyclicException()
     return when {
         Creator.objectFactory.contains(klass.java) -> {
             Creator.objectFactory.get(klass.java)?.invoke() as R

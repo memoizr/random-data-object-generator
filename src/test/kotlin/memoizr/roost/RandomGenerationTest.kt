@@ -150,18 +150,18 @@ class RandomGenerationTest {
         expect that aPair.second isInstance of<Int>()
     }
 
-    val aSet by aRandom<Set<String>>()
+    val aSet by aRandom<Set<Set<String>>>()
 
     @Test
     fun `creates a set`() {
-        expect that aSet.size isGreaterThan 0
+        expect that aSet.print().size isGreaterThan 0
     }
 
-    val aMap by aRandom<Map<Foo, SimpleClass>>()
+    val aMap by aRandom<Map<Map<Foo, ClassWithList>, Map<String, Set<SimpleClass>>>>()
 
     @Test
     fun `create a map`() {
-        expect that aMap.size isGreaterThan 0
+        expect that aMap.print().size isGreaterThan 0
     }
 }
 
