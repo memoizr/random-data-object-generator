@@ -12,44 +12,55 @@ import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.jvmErasure
 
-class aRandomListOf<out T>(private val size: Int? = null) {
+class aRandomListOf<out T: Any>(private val size: Int? = null) {
     operator fun getValue(hostClass: Any, property: KProperty<*>): List<T> {
-        return aList(KTypeProjection(KVariance.OUT, property.returnType.arguments.first().type), hostClass::class.java.canonicalName + "::" + property.name, emptySet(), size?.dec())
+        val type = property.returnType.arguments.first().type
+        println("tpe ${property.returnType}")
+        return aList(KTypeProjection(KVariance.OUT, type), hostClass::class.java.canonicalName + "::" + property.name, emptySet(), size?.dec())
     }
 }
 
 private fun hashString(string: String): Long = string.toByteArray().map(Byte::toLong).sum()
 
-fun aString(token: String = ""): String {
+private fun aString(token: String = ""): String {
     return Random(getSeed(token)).let {
         RandomStringUtils.random(Math.max(1, it.nextInt(Seed.maxStringLength)), 0, 59319, true, true, null, it)
     }
 }
 
-fun aChar(token: String = ""): Char = Random(getSeed(token)).nextInt(59319).toChar()
-fun anInt(token: String = ""): Int = Random(getSeed(token)).nextInt()
-fun aLong(token: String = ""): Long = Random(getSeed(token)).nextLong()
-fun aDouble(token: String = ""): Double = Random(getSeed(token)).nextDouble()
-fun aShort(token: String = ""): Short = Random(getSeed(token)).nextInt(Short.MAX_VALUE.toInt()).toShort()
-fun aFloat(token: String = ""): Float = Random(getSeed(token)).nextFloat()
-fun aByte(token: String = ""): Byte = Random(getSeed(token)).nextInt(255).toByte()
-
-fun aBoolean(token: String = ""): Boolean {
-    return Random(getSeed(token)).nextBoolean()
-}
+private fun aChar(token: String = ""): Char = Random(getSeed(token)).nextInt(59319).toChar()
+private fun anInt(token: String = ""): Int = Random(getSeed(token)).nextInt()
+private fun aLong(token: String = ""): Long = Random(getSeed(token)).nextLong()
+private fun aDouble(token: String = ""): Double = Random(getSeed(token)).nextDouble()
+private fun aShort(token: String = ""): Short = Random(getSeed(token)).nextInt(Short.MAX_VALUE.toInt()).toShort()
+private fun aFloat(token: String = ""): Float = Random(getSeed(token)).nextFloat()
+private fun aByte(token: String = ""): Byte = Random(getSeed(token)).nextInt(255).toByte()
+private fun aBoolean(token: String = ""): Boolean = Random(getSeed(token)).nextBoolean()
 
 private fun <R : Any> aList(typeProjection: KTypeProjection, token: String, past: Set<KClass<*>>, size: Int? = null): R {
     val klass = typeProjection.type!!.jvmErasure
     if (klass != List::class && past.contains(klass)) throw CyclicException()
     val range = size ?: Random(getSeed(token)).nextInt(10)
     return if (klass == List::class) {
-        (0..range).map { instantiateClazz<R>(typeProjection.type!!.arguments.first().type!!, "$token::$it") } as R
+        (0..range).map {
+//            instantiateClazz<R>(typeProjection.type!!.arguments.print().first().type!!, "$token::$it")
+            aList<R>(typeProjection.type!!.arguments.first(), "$token::$it", past)
+        } as R
     } else {
         (0..range).map { instantiateClazz<R>(typeProjection.type!!, "$token::$it") } as R
     }
 }
 
-fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Set<KClass<*>> = emptySet()): R {
+internal fun <T: Any> T.print() = this.apply{
+    val stackFrame = Thread.currentThread().stackTrace[2]
+    val className = stackFrame.className
+    val methodName = stackFrame.methodName
+    val fileName = stackFrame.fileName
+    val lineNumber = stackFrame.lineNumber
+    println("$this at $className.$methodName($fileName:$lineNumber)")
+}
+
+private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Set<KClass<*>> = emptySet()): R {
     val klass = type.jvmErasure
     if (klass != List::class && past.contains(klass)) throw CyclicException()
     return when {
@@ -58,7 +69,7 @@ fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Set<KClass
         }
         klass.java.canonicalName == String::class.java.canonicalName -> aString(token) as R
         klass.java.isEnum -> klass.java.enumConstants[Random(getSeed(token)).nextInt(klass.java.enumConstants.size)] as R
-        klass == kotlin.collections.List::class -> aList(type.arguments.first(), token, past.plus(klass))
+        klass == kotlin.collections.List::class -> aList<R>(type.arguments.print().first(), token, past.plus(klass)) as R
         klass == kotlin.String::class -> aString(token) as R
         klass == kotlin.Byte::class -> aByte(token) as R
         klass == kotlin.Int::class -> anInt(token) as R

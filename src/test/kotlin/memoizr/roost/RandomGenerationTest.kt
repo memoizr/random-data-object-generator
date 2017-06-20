@@ -140,6 +140,13 @@ class RandomGenerationTest {
     fun `it copes with objects`() {
         expect that aClassWithObject.anObject isEqualTo AnObject
     }
+
+    val x by aRandomListOf<SimpleClass>()
+
+    @Test
+    fun `hello`() {
+        x.print()
+    }
 }
 
 interface Foo
