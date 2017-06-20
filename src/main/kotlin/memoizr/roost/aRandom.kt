@@ -6,6 +6,8 @@ import org.reflections.scanners.SubTypesScanner
 import java.security.SecureRandom.getSeed
 import java.util.*
 import kotlin.reflect.*
+import kotlin.reflect.full.createType
+import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.jvmErasure
@@ -41,13 +43,13 @@ private fun <R : Any> aList(typeProjection: KTypeProjection, token: String, past
     if (klass != List::class && past.contains(klass)) throw CyclicException()
     val range = size ?: Random(getSeed(token)).nextInt(10)
     return if (klass == List::class) {
-        (0..range).map { instantiateClazz<R>(typeProjection.type!!.arguments.first().type!!, "$token::$it", listOf(typeProjection.type!!.arguments.first())) } as R
+        (0..range).map { instantiateClazz<R>(typeProjection.type!!.arguments.first().type!!, "$token::$it") } as R
     } else {
-        (0..range).map { instantiateClazz<R>(typeProjection.type!!, "$token::$it", listOf(typeProjection)) } as R
+        (0..range).map { instantiateClazz<R>(typeProjection.type!!, "$token::$it") } as R
     }
 }
 
-fun <R : Any> instantiateClazz(type: KType, token: String = "", typeProjections: List<KTypeProjection> = emptyList(), past: Set<KClass<*>> = emptySet()): R {
+fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Set<KClass<*>> = emptySet()): R {
     val klass = type.jvmErasure
     if (klass != List::class && past.contains(klass)) throw CyclicException()
     return when {
@@ -56,7 +58,7 @@ fun <R : Any> instantiateClazz(type: KType, token: String = "", typeProjections:
         }
         klass.java.canonicalName == String::class.java.canonicalName -> aString(token) as R
         klass.java.isEnum -> klass.java.enumConstants[Random(getSeed(token)).nextInt(klass.java.enumConstants.size)] as R
-        klass == kotlin.collections.List::class -> aList(typeProjections.first(), token, past.plus(klass))
+        klass == kotlin.collections.List::class -> aList(type.arguments.first(), token, past.plus(klass))
         klass == kotlin.String::class -> aString(token) as R
         klass == kotlin.Byte::class -> aByte(token) as R
         klass == kotlin.Int::class -> anInt(token) as R
@@ -86,29 +88,14 @@ fun <R : Any> instantiateClazz(type: KType, token: String = "", typeProjections:
             defaultConstructor.isAccessible = true
             val constructorParameters: List<KParameter> = defaultConstructor.parameters
             defaultConstructor.call(*(constructorParameters.map {
-                val typeArguments: List<KTypeProjection> = it.type.arguments
-                instantiateClazz<Any>(it.type, "$token::${it.type.javaType.typeName}", typeArguments, past.plus(klass))
+                instantiateClazz<Any>(it.type, "$token::${it.type.javaType.typeName}", past.plus(klass))
                 if (it.type.isMarkedNullable && Random(getSeed(token)).nextBoolean()) null else {
-                    instantiateClazz<Any>(it.type, "$token::${it.type.javaType.typeName}", typeArguments, past.plus(klass))
+                    instantiateClazz<Any>(it.type, "$token::${it.type.javaType.typeName}", past.plus(klass))
                 }
             }).toTypedArray())
         }
     }
 }
-
-//inline fun <reified A : Any> forAll(block: (A) -> Unit) {
-//    (1..10).forEach {
-//        block(instantiateClazz(A::class, "$it", emptyList(), emptySet()))
-//    }
-//}
-//
-//inline fun <reified A : Any, reified B : Any> forAll(block: (A, B) -> Unit) {
-//    (1..100).forEach {
-//        val a = instantiateClazz(A::class, "${A::class}${it * 1345}", emptyList(), emptySet())
-//        val b = instantiateClazz(B::class, "${B::class}${(0..it).map { it }}", emptyList(), emptySet())
-//        block(a, b)
-//    }
-//}
 
 private fun getSeed(token: String): Long = Seed.seed + hashString(token)
 
@@ -116,7 +103,6 @@ class aRandom<out T : Any>(private val custom: T.() -> T = { this }) {
     operator fun getValue(hostClass: Any, property: KProperty<*>): T {
         return (instantiateClazz<T>(property.returnType, hostClass::class.java.canonicalName + "::" + property.name) as T).let { custom(it) }
     }
-
 }
 
 object Creator {
@@ -127,7 +113,7 @@ object Seed {
     var seed = Random().nextLong()
         set(value) {
             field = value
-            println("overriding seed: $value")
+//            println("overriding seed: $value")
         }
     val maxStringLength = 20
 

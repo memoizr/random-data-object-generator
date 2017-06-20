@@ -123,7 +123,6 @@ class RandomGenerationTest {
     @Test
     fun `creates a random list`() {
         expect that aRandomListOfList.size isGreaterThan 0
-        println(aRandomListOfList)
         expect that aRandomList.size isGreaterThan 0
         expect that aRandomListSize10.size isEqualTo 10
     }
@@ -136,31 +135,17 @@ class RandomGenerationTest {
     }
 
     val aClassWithObject by aRandom<AClassWithObject>()
+
     @Test
     fun `it copes with objects`() {
         expect that aClassWithObject.anObject isEqualTo AnObject
     }
-
-//    @Test
-//    fun x() {
-//        Seed.seed = 1234
-//
-////        forAll { a: ClassWithList ->
-////            println(a)
-////        }
-//
-//        forAll { a: String, b: Int ->
-//            println("$a  $b")
-//            expect that b isGreaterThan 0
-//        }
-//    }
-
-
 }
+
 interface Foo
 
-//data class X(val x: String) : Foo()
-//data class Y(val x: String) : Foo()
+data class X(val x: String) : Foo
+data class Y(val x: String) : Foo
 
 interface AnInterface
 object AnObject
