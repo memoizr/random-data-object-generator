@@ -72,6 +72,10 @@ private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Se
         klass.java.isEnum -> klass.java.enumConstants[Random(getSeed(token)).nextInt(klass.java.enumConstants.size)] as R
         klass == kotlin.collections.List::class -> aList<R>(type.arguments.first(), token, past.plus(klass)) as R
         klass == kotlin.collections.Set::class -> (aList<R>(type.arguments.first(), token, past.plus(klass)) as List<*>).toSet() as R
+        klass == kotlin.collections.Map::class -> {
+            val keys = aList<Any>(type.arguments.first(), token, past.plus(klass)) as List<*>
+            keys.map { Pair(it, instantiateClazz<Any>(type.arguments[1].type!!, token)) }.toMap() as R
+        }
         klass == kotlin.String::class -> aString(token) as R
         klass == kotlin.Byte::class -> aByte(token) as R
         klass == kotlin.Int::class -> anInt(token) as R

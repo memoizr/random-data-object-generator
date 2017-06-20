@@ -142,7 +142,6 @@ class RandomGenerationTest {
         expect that aClassWithObject.anObject isEqualTo AnObject
     }
 
-
     val aPair by aRandom<Pair<String, Int>>()
 
     @Test
@@ -156,6 +155,13 @@ class RandomGenerationTest {
     @Test
     fun `creates a set`() {
         expect that aSet.size isGreaterThan 0
+    }
+
+    val aMap by aRandom<Map<Foo, SimpleClass>>()
+
+    @Test
+    fun `create a map`() {
+        expect that aMap.size isGreaterThan 0
     }
 }
 
