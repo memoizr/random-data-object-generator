@@ -103,7 +103,7 @@ private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Se
         }
         else -> {
             val constructors = klass.constructors.toList()
-            val defaultConstructor: KFunction<R> = constructors[Random(getSeed(token)).nextInt(constructors.size)] as KFunction<R>
+            val defaultConstructor: KFunction<R> = constructors.filter { !it.parameters.any { (it.type.jvmErasure.java == klass)} }[Random(getSeed(token)).nextInt(constructors.size)] as KFunction<R>
             defaultConstructor.isAccessible = true
             val constructorParameters: List<KParameter> = defaultConstructor.parameters
             val params = type.arguments.toMutableList()

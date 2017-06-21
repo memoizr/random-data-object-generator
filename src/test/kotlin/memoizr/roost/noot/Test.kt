@@ -1,6 +1,7 @@
 package memoizr.roost.noot
 
 import memoizr.roost.Foo
+import memoizr.roost.Seed
 import memoizr.roost.aRandom
 import memoizr.roost.print
 import org.junit.Test
@@ -13,6 +14,8 @@ class Test {
 
     @Test
     fun aTest() {
+
+        Seed.seed = 396253033248602256
         clip.print()
     }
 }
@@ -75,6 +78,7 @@ data class TextTag(override val category: Category, override val name: String) :
 data class ImageTag(override val category: Category, override val name: String, val image: Image) : Tag() {
     override val query = name
 }
+
 interface Query : Serializable {
     val query: String
 
