@@ -87,7 +87,7 @@ private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Se
         klass == kotlin.Boolean::class -> aBoolean(token) as R
         klass == kotlin.Char::class -> aChar(token) as R
         klass.objectInstance != null -> klass.objectInstance as R
-        klass.java.isInterface -> {
+        klass.java.isInterface || klass.isSealed -> {
             val allClasses = Reflections("", SubTypesScanner(false)).getSubTypesOf(klass.java)
             val implementations = allClasses.filter { klass.java.isAssignableFrom(it) }
             val implementation = implementations[Random(getSeed(token)).nextInt(implementations.size)]

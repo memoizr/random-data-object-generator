@@ -8,7 +8,6 @@ import com.memoizr.assertk.of
 import org.junit.Test
 import java.math.BigDecimal
 import java.util.*
-import kotlin.collections.ArrayList
 
 class RandomGenerationTest {
     val aSimpleClass by aRandom<SimpleClass>()
@@ -163,11 +162,28 @@ class RandomGenerationTest {
     fun `create a map`() {
         expect that aMap.print().size isGreaterThan 0
     }
+
+    val something by aRandom<Set<Any>>()
+
+    @Test
+    fun tst() {
+        something.print()
+    }
+
+    val aSealedClass by aRandom<ASealedClass>()
+
+    @Test
+    fun `creates sealed classes`() {
+        expect that aSealedClass.print() isInstance of<ASealedClass>()
+    }
 }
 
-interface Foo
+sealed class ASealedClass
 
-class Lyst<T> : List<T> by ArrayList<T>()
+data class One(val x: String) : ASealedClass()
+data class Two(val x: String) : ASealedClass()
+
+interface Foo
 data class X(val x: String) : Foo
 data class Y(val x: String) : Foo
 
