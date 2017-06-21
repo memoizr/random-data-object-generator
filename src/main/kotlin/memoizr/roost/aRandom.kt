@@ -1,9 +1,12 @@
 package memoizr.roost
 
 import com.sun.deploy.util.ReflectionUtil.isSubclassOf
+import com.sun.jndi.toolkit.url.Uri
 import org.apache.commons.lang3.RandomStringUtils
 import org.reflections.Reflections
 import org.reflections.scanners.SubTypesScanner
+import java.io.File
+import java.net.URI
 import java.security.SecureRandom.getSeed
 import java.util.*
 import kotlin.reflect.*
@@ -76,6 +79,7 @@ private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Se
             val keys = aList<Any>(type.arguments.first(), token, past.plus(klass)) as List<*>
             keys.map { Pair(it, instantiateClazz<Any>(type.arguments[1].type!!, token)) }.toMap() as R
         }
+        klass == File::class -> File(aString(token)) as R
         klass == kotlin.String::class -> aString(token) as R
         klass == kotlin.Byte::class -> aByte(token) as R
         klass == kotlin.Int::class -> anInt(token) as R
@@ -102,8 +106,9 @@ private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Se
             instantiateClazz<R>(tpe, "$token::${implementation.name}")
         }
         else -> {
-            val constructors = klass.constructors.toList()
-            val defaultConstructor: KFunction<R> = constructors.filter { !it.parameters.any { (it.type.jvmErasure.java == klass)} }[Random(getSeed(token)).nextInt(constructors.size)] as KFunction<R>
+            val constructors = klass.constructors.filter { !it.parameters.any { (it.type.jvmErasure == klass)} }.toList()
+            if (constructors.size == 0 && klass.constructors.any { it.parameters.any { (it.type.jvmErasure == klass)} }) throw CyclicException()
+            val defaultConstructor: KFunction<R> = constructors[Random(getSeed(token)).nextInt(constructors.size)] as KFunction<R>
             defaultConstructor.isAccessible = true
             val constructorParameters: List<KParameter> = defaultConstructor.parameters
             val params = type.arguments.toMutableList()

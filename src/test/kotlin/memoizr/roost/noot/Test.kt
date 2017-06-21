@@ -15,7 +15,7 @@ class Test {
     @Test
     fun aTest() {
 
-        Seed.seed = 396253033248602256
+        Seed.seed = 2323667061224252267
         clip.print()
     }
 }

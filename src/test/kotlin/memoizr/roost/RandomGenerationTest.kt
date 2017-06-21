@@ -4,8 +4,10 @@ package memoizr.roost
 
 import com.memoizr.assertk.expect
 import com.memoizr.assertk.isEqualTo
+import com.memoizr.assertk.notNull
 import com.memoizr.assertk.of
 import org.junit.Test
+import java.io.File
 import java.math.BigDecimal
 import java.util.*
 
@@ -182,6 +184,13 @@ class RandomGenerationTest {
     @Test
     fun `goes fast with interfaces`() {
         aFooBar.print()
+    }
+
+    val anUri by aRandom<File>()
+
+    @Test
+    fun `creates URI`() {
+        expect that anUri _is notNull
     }
 }
 
