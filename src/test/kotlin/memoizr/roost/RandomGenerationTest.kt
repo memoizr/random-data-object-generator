@@ -176,6 +176,13 @@ class RandomGenerationTest {
     fun `creates sealed classes`() {
         expect that aSealedClass.print() isInstance of<ASealedClass>()
     }
+
+    val aFooBar by aRandom<Fooed>()
+
+    @Test
+    fun `goes fast with interfaces`() {
+        aFooBar.print()
+    }
 }
 
 sealed class ASealedClass
@@ -186,6 +193,13 @@ data class Two(val x: String) : ASealedClass()
 interface Foo
 data class X(val x: String) : Foo
 data class Y(val x: String) : Foo
+
+data class Fooed(
+        val a: List<List<List<List<Foo>>>>,
+        val b: List<List<List<List<Foo>>>>,
+        val c: List<List<List<List<Foo>>>>,
+        val d: List<List<List<List<Foo>>>>
+)
 
 interface AnInterface
 object AnObject

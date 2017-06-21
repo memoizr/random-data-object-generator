@@ -88,7 +88,8 @@ private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Se
         klass == kotlin.Char::class -> aChar(token) as R
         klass.objectInstance != null -> klass.objectInstance as R
         klass.java.isInterface || klass.isSealed -> {
-            val allClasses = Reflections("", SubTypesScanner(false)).getSubTypesOf(klass.java)
+            val allClasses: MutableSet<out Class<out Any>> = classes ?: Reflections("", SubTypesScanner(false)).getSubTypesOf(klass.java).apply { classes = this }
+
             val implementations = allClasses.filter { klass.java.isAssignableFrom(it) }
             val implementation = implementations[Random(getSeed(token)).nextInt(implementations.size)]
             val tpe = object : KType {
@@ -101,7 +102,7 @@ private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Se
         }
         else -> {
             val constructors = klass.constructors.toList()
-            val defaultConstructor: KFunction<R> =  constructors[Random(getSeed(token)).nextInt(constructors.size)] as KFunction<R>
+            val defaultConstructor: KFunction<R> = constructors[Random(getSeed(token)).nextInt(constructors.size)] as KFunction<R>
             defaultConstructor.isAccessible = true
             val constructorParameters: List<KParameter> = defaultConstructor.parameters
             val params = type.arguments.toMutableList()
@@ -115,6 +116,8 @@ private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Se
         }
     }
 }
+
+private var classes: MutableSet<out Class<out Any>>? = null
 
 private fun getSeed(token: String): Long = Seed.seed + hashString(token)
 
