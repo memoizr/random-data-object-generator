@@ -88,7 +88,8 @@ private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Se
         klass == kotlin.Char::class -> aChar(token) as R
         klass.objectInstance != null -> klass.objectInstance as R
         klass.java.isInterface || klass.isSealed -> {
-            val allClasses: MutableSet<out Class<out Any>> = classes ?: Reflections("", SubTypesScanner(false)).getSubTypesOf(klass.java).apply { classes = this }
+            val allClasses: MutableSet<out Class<out Any>> = if(classes.isEmpty())  Reflections("", SubTypesScanner(false)).getSubTypesOf(Any::class.java).apply {
+                classes.addAll(this) } else classes
 
             val implementations = allClasses.filter { klass.java.isAssignableFrom(it) }
             val implementation = implementations[Random(getSeed(token)).nextInt(implementations.size)]
@@ -117,7 +118,7 @@ private fun <R : Any> instantiateClazz(type: KType, token: String = "", past: Se
     }
 }
 
-private var classes: MutableSet<out Class<out Any>>? = null
+private val classes: MutableSet<Class<out Any>> = mutableSetOf()
 
 private fun getSeed(token: String): Long = Seed.seed + hashString(token)
 
