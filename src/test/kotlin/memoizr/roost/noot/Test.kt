@@ -1,7 +1,8 @@
 package memoizr.roost.noot
 
-import memoizr.roost.Foo
+import memoizr.roost.Interface1
 import memoizr.roost.aRandom
+import memoizr.roost.aRandomListOf
 import memoizr.roost.print
 import org.junit.Test
 import java.io.File
@@ -9,12 +10,19 @@ import java.io.Serializable
 
 class Test {
 
-    val clip by aRandom<Clip>()
+    val clip by aRandomListOf<Clip>(10)
+    val aUser by aRandom<String>()
+
+    @Test
+    fun user() {
+        aUser.print()
+    }
 
     @Test
     fun aTest() {
         clip.print()
     }
+
 }
 
 data class User(
@@ -22,12 +30,11 @@ data class User(
         val name: String,
         val addresses: List<Address>,
         val bored: Boolean,
-        val friend: User,
         val height: Float)
 
 data class Address(val lineOne: String, val lineTwo: String, val postCode: String)
 
-data class Z(val y: String) : Foo
+data class Z(val y: String) : Interface1
 
 data class Clip(
         val clipId: ClipId,
