@@ -1,7 +1,6 @@
 package memoizr.roost.noot
 
 import memoizr.roost.Foo
-import memoizr.roost.Seed
 import memoizr.roost.aRandom
 import memoizr.roost.print
 import org.junit.Test
@@ -14,8 +13,6 @@ class Test {
 
     @Test
     fun aTest() {
-
-        Seed.seed = 2323667061224252267
         clip.print()
     }
 }
