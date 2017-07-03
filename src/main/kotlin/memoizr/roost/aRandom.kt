@@ -1,22 +1,15 @@
 package memoizr.roost
 
-import com.sun.deploy.util.ReflectionUtil.isSubclassOf
-import com.sun.jndi.toolkit.url.Uri
-import jdk.nashorn.internal.objects.NativeArray.some
 import org.apache.commons.lang3.RandomStringUtils
 import org.reflections.Reflections
 import org.reflections.scanners.SubTypesScanner
 import java.io.File
-import java.net.URI
-import java.security.SecureRandom.getSeed
 import java.util.*
-import javax.xml.bind.DatatypeConverter.printTime
 import kotlin.reflect.*
-import kotlin.reflect.full.*
+import kotlin.reflect.full.createType
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.jvmErasure
-import kotlin.system.measureNanoTime
 import kotlin.system.measureTimeMillis
 
 class aRandomListOf<out T : Any>(private val size: Int? = null) {
@@ -74,13 +67,13 @@ public fun <R : Any?> instantiateClazz(type: KType, token: String = "", past: Se
     if ((klass != List::class && klass != Set::class && klass != Map::class) && past.contains(klass)) throw CyclicException()
     return if (type.isMarkedNullable && Random(getSeed(token)).nextInt() % 2 == 0) null as R else when {
         objectFactory.contains(klass.java) -> {
-           objectFactory.get(klass.java)?.invoke(token) as R
+            objectFactory.get(klass.java)?.invoke(token) as R
         }
         klass.java.canonicalName == String::class.java.canonicalName -> aString(token) as R
         klass.java.isEnum -> klass.java.enumConstants[Random(getSeed(token)).nextInt(klass.java.enumConstants.size)] as R
         klass == IntArray::class -> (aList<Any>(KTypeProjection(KVariance.OUT, Int::class.createType()), token, past) as List<Int>).toTypedArray() as R
         Array<Any>::class.java.isAssignableFrom(klass.java) -> {
-             val list = (aList<R>(type.arguments.first(), token, past.plus(klass)) as List<Any?>)
+            val list = (aList<R>(type.arguments.first(), token, past.plus(klass)) as List<Any?>)
             val array = java.lang.reflect.Array.newInstance(type.arguments.first()!!.type!!.jvmErasure!!.java, list.size) as Array<Any?>
             list.forEachIndexed { index, any ->
                 array[index] = any
@@ -117,7 +110,7 @@ public fun <R : Any?> instantiateClazz(type: KType, token: String = "", past: Se
             instantiateClazz<R>(implementation.kotlin.createType(), "$token::${implementation.name}")
         }
         else -> {
-            val constructors = klass.print().constructors.filter { !it.parameters.any { (it.type.jvmErasure == klass) } }.toList()
+            val constructors = klass.constructors.filter { !it.parameters.any { (it.type.jvmErasure == klass) } }.toList()
             if (constructors.size == 0 && klass.constructors.any { it.parameters.any { (it.type.jvmErasure == klass) } }) throw CyclicException()
             val defaultConstructor: KFunction<R> = constructors[Random(getSeed(token)).nextInt(constructors.size)] as KFunction<R>
             defaultConstructor.isAccessible = true
@@ -125,10 +118,8 @@ public fun <R : Any?> instantiateClazz(type: KType, token: String = "", past: Se
             val params = type.arguments.toMutableList()
             defaultConstructor.call(*(constructorParameters.map {
                 val tpe = if (it.type.jvmErasure == Any::class) params.removeAt(0).type!! else it.type
-                if (it.type.isMarkedNullable && Random(getSeed(token)).nextBoolean()) null else {
-                    instantiateClazz<Any>(tpe, "$token::${tpe.javaType.typeName}::$it", past.plus(klass))
-                }
-            }).toTypedArray().apply { this::class.print() })
+                instantiateClazz<Any>(tpe, "$token::${tpe.javaType.typeName}::$it", past.plus(klass))
+            }).toTypedArray())
         }
     }
 }
@@ -191,6 +182,7 @@ inline fun <reified A, reified R : Any> ((A) -> R).create(a: A = some()): R {
     val res = doit<A>(param, params, token)
     return invoke(if (a == some) res else a)
 }
+
 inline fun <A, B, reified R : Any> ((A, B) -> R).create(a: A = some(), b: B = some()): R {
     val token = ""
     val klass = R::class
