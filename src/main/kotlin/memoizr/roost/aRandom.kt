@@ -101,7 +101,6 @@ inline fun <reified A, reified R : Any> ((A) -> R).create(a: A = some()): R {
     val type = R::class.createType()
     val constructors = klass.constructors.filter { !it.parameters.any { (it.type.jvmErasure == klass) } }.toList()
     if (constructors.size == 0 && klass.constructors.any { it.parameters.any { (it.type.jvmErasure == klass) } }) throw CyclicException()
-
     val defaultConstructor: KFunction<R> = constructors.filter { it.parameters[0].type.jvmErasure == A::class }.first()
     defaultConstructor.isAccessible = true
     val constructorParameters: List<KParameter> = defaultConstructor.parameters
@@ -137,10 +136,8 @@ fun <A> doit(param: KParameter, params: MutableList<KTypeProjection>, token: Str
 
 private fun hashString(string: String): Long = UUID.nameUUIDFromBytes(string.toByteArray()).mostSignificantBits
 
-private fun aString(token: String = ""): String {
-    return Random(getSeed(token)).let {
-        RandomStringUtils.random(Math.max(1, it.nextInt(Seed.maxStringLength)), 0, 59319, true, true, null, it)
-    }
+private fun aString(token: String = ""): String = Random(getSeed(token)).let {
+    RandomStringUtils.random(Math.max(1, it.nextInt(Seed.maxStringLength)), 0, 59319, true, true, null, it)
 }
 
 private fun aChar(token: String = ""): Char = Random(getSeed(token)).nextInt(59319).toChar()
@@ -154,7 +151,7 @@ private fun aBoolean(token: String = ""): Boolean = Random(getSeed(token)).nextB
 
 private fun aList(typeProjection: KTypeProjection, token: String, past: Set<KClass<*>>, size: Int? = null): List<*> {
     val klass = typeProjection.type!!.jvmErasure
-    if ((klass != List::class && klass != Set::class && klass != Map::class) && past.contains(klass)) throw CyclicException()
+    if (isAllowedCyclic(klass) && past.contains(klass)) throw CyclicException()
     val range = size ?: Random(getSeed(token)).nextInt(5)
     return if (klass == List::class) {
         (0..range).map {
@@ -176,46 +173,53 @@ internal fun <T : Any> T.print() = this.apply {
 
 private fun <R : Any?> instantiateClazz(type: KType, token: String = "", past: Set<KClass<*>> = emptySet()): R {
     val klass = getArrayClass(type)
-
-    if ((klass != List::class && klass != Set::class && klass != Map::class && !klass.java.isArray) && past.contains(klass)) throw CyclicException()
+    if (isAllowedCyclic(klass) && past.contains(klass)) throw CyclicException()
     val result = if (type.isMarkedNullable && Random(getSeed(token)).nextInt() % 2 == 0) null else when {
         klass in objectFactory -> {
             objectFactory[klass]?.invoke(type, past, token)
         }
         klass.java.isEnum -> klass.java.enumConstants[Random(getSeed(token)).nextInt(klass.java.enumConstants.size)]
         klass.objectInstance != null -> klass.objectInstance
-        klass.java.isArray -> {
-            val list = aList(type.arguments.first(), token, past.plus(klass))
-            val array = java.lang.reflect.Array.newInstance(type.arguments.first()!!.type!!.jvmErasure!!.java, list.size) as Array<Any?>
-            list.forEachIndexed { index, any -> array[index] = any }
-            array
-        }
-        klass.java.isInterface || klass.isSealed -> {
-            val allClasses: MutableSet<out Class<out Any>> =
-                    if (classes.isEmpty())
-                        Reflections("", SubTypesScanner(false)).getSubTypesOf(Any::class.java).apply { classes.addAll(this) }
-                    else classes
-            val implementations = classesMap[klass] ?: allClasses
-                    .filter { klass.java.isAssignableFrom(it) }
-                    .apply { classesMap.put(klass, this) }
-
-            val implementation = implementations[Random(getSeed(token)).nextInt(implementations.size)]
-            instantiateClazz<R>(implementation.kotlin.createType(), "$token::${implementation.name}")
-        }
-        else -> {
-            val constructors = klass.constructors.filter { !it.parameters.any { (it.type.jvmErasure == klass) } }.toList()
-            if (constructors.size == 0 && klass.constructors.any { it.parameters.any { (it.type.jvmErasure == klass) } }) throw CyclicException()
-            val defaultConstructor = constructors[Random(getSeed(token)).nextInt(constructors.size)] as KFunction<R>
-            defaultConstructor.isAccessible = true
-            val constructorParameters: List<KParameter> = defaultConstructor.parameters
-            val params = type.arguments.toMutableList()
-            defaultConstructor.call(*(constructorParameters.map {
-                val tpe = if (it.type.jvmErasure == Any::class) params.removeAt(0).type!! else it.type
-                instantiateClazz<Any>(tpe, "$token::${tpe.jvmErasure}::$it", past.plus(klass))
-            }).toTypedArray())
-        }
+        klass.java.isArray -> instantiateArray(type, token, past, klass)
+        klass.java.isInterface || klass.isSealed -> instantiateInterface<R>(klass, token)
+        else -> instantiateArbitraryClass<R>(klass, token, type, past)
     }
     return result as R
+}
+
+private fun isAllowedCyclic(klass: KClass<out Any>) = klass != List::class && klass != Set::class && klass != Map::class && !klass.java.isArray
+
+private fun instantiateArray(type: KType, token: String, past: Set<KClass<*>>, klass: KClass<out Any>): Array<Any?> {
+    val list = aList(type.arguments.first(), token, past.plus(klass))
+    val array = java.lang.reflect.Array.newInstance(type.arguments.first()!!.type!!.jvmErasure!!.java, list.size) as Array<Any?>
+    list.forEachIndexed { index, any -> array[index] = any }
+    return array
+}
+
+private fun <R : Any?> instantiateInterface(klass: KClass<out Any>, token: String): R {
+    val allClasses: MutableSet<out Class<out Any>> =
+            if (classes.isEmpty())
+                Reflections("", SubTypesScanner(false)).getSubTypesOf(Any::class.java).apply { classes.addAll(this) }
+            else classes
+    val implementations = classesMap[klass] ?: allClasses
+            .filter { klass.java.isAssignableFrom(it) }
+            .apply { classesMap.put(klass, this) }
+
+    val implementation = implementations[Random(getSeed(token)).nextInt(implementations.size)]
+    return instantiateClazz<R>(implementation.kotlin.createType(), "$token::${implementation.name}")
+}
+
+private fun <R : Any?> instantiateArbitraryClass(klass: KClass<out Any>, token: String, type: KType, past: Set<KClass<*>>): R {
+    val constructors = klass.constructors.filter { !it.parameters.any { (it.type.jvmErasure == klass) } }.toList()
+    if (constructors.size == 0 && klass.constructors.any { it.parameters.any { (it.type.jvmErasure == klass) } }) throw CyclicException()
+    val defaultConstructor = constructors[Random(getSeed(token)).nextInt(constructors.size)] as KFunction<R>
+    defaultConstructor.isAccessible = true
+    val constructorParameters: List<KParameter> = defaultConstructor.parameters
+    val params = type.arguments.toMutableList()
+    return defaultConstructor.call(*(constructorParameters.map {
+        val tpe = if (it.type.jvmErasure == Any::class) params.removeAt(0).type!! else it.type
+        instantiateClazz<Any>(tpe, "$token::${tpe.jvmErasure}::$it", past.plus(klass))
+    }).toTypedArray())
 }
 
 private fun getArrayClass(type: KType): KClass<out Any> {

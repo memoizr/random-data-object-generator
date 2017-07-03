@@ -1,18 +1,15 @@
 package memoizr.roost.noot
 
-import memoizr.roost.*
+import memoizr.roost.aRandom
+import memoizr.roost.create
+import memoizr.roost.print
+import memoizr.roost.some
 import org.junit.Test
 import java.io.File
 import java.io.Serializable
-import java.util.*
-import kotlin.reflect.*
-import kotlin.reflect.full.createType
-import kotlin.reflect.jvm.isAccessible
-import kotlin.reflect.jvm.javaType
-import kotlin.reflect.jvm.jvmErasure
+import kotlin.reflect.KFunction1
 
 class Test {
-
     val clip by aRandom<Clip>()
     val aUser by aRandom<String>()
 
@@ -25,7 +22,6 @@ class Test {
     fun aTest() {
         clip.print()
     }
-
 
     @Test
     fun ff() {
