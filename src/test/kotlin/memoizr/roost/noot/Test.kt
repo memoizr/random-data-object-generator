@@ -1,16 +1,20 @@
 package memoizr.roost.noot
 
-import memoizr.roost.Interface1
-import memoizr.roost.aRandom
-import memoizr.roost.aRandomListOf
-import memoizr.roost.print
+import memoizr.roost.*
 import org.junit.Test
 import java.io.File
 import java.io.Serializable
+import java.util.*
+import javax.sound.sampled.Clip
+import kotlin.reflect.*
+import kotlin.reflect.full.createType
+import kotlin.reflect.jvm.isAccessible
+import kotlin.reflect.jvm.javaType
+import kotlin.reflect.jvm.jvmErasure
 
 class Test {
 
-    val clip by aRandomListOf<Clip>(10)
+    val clip by aRandom<Clip>()
     val aUser by aRandom<String>()
 
     @Test
@@ -21,6 +25,30 @@ class Test {
     @Test
     fun aTest() {
         clip.print()
+    }
+
+
+    @Test
+    fun ff() {
+
+//        List::class.createType(listOf(KTypeProjection(OUT, String::class.createType()))).print()
+
+//        List::class(OUT, String::class).print()
+
+//        listKType<String>()
+//        ClipId(a(String::class())).print()
+//        List::class of String::class
+//        ClassWithList(a(listKType<String>())).print()
+//        ClassWithList(a(Fooed::class of SimpleClass::class)).print()
+
+
+        val kFunction1: KFunction1<@ParameterName(name = "name") String, SimpleClass> = ::SimpleClass
+
+        kFunction1.create(a = "").print()
+
+        ::Size.create(some(), some()).print()
+
+        ::SimpleCompoundClass.create(::SimpleClass.create().copy(""), some()).print()
     }
 
 }
@@ -75,6 +103,7 @@ sealed class Tag : Query {
     abstract val category: Category
     abstract val name: String
 }
+
 data class TextTag(override val category: Category, override val name: String) : Tag() {
     override val query = name
 }

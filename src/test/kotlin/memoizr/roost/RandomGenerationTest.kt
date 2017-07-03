@@ -87,9 +87,12 @@ class RandomGenerationTest {
 
     @Test
     fun `it allows to customize object creation`() {
-        Creator.objectFactory.put(BigDecimal::class.java, { -> BigDecimal(1) })
+        custom {
+            val bigDecimal: (Long) -> BigDecimal = ::BigDecimal
+            bigDecimal.create(some())
+        }
 
-        expect that aClassWithBigDecimal isInstance of<ClassWithBigDecimal>()
+        expect that aClassWithBigDecimal.print() isInstance of<ClassWithBigDecimal>()
     }
 
     @Test
@@ -185,7 +188,45 @@ class RandomGenerationTest {
     fun `creates URI`() {
         expect that anUri _is notNull
     }
+
+    val anArrayClass by aRandom<ArrayClass>()
+
+    @Test
+    fun void() {
+        anArrayClass.print()
+    }
+
+    @Test
+    fun array() {
+
+//        intArrayOf() is IntArray
+        val yfun = StrObj::class.members.print().first()
+        StrObj::class.java.methods.asList().print().first()
+        "-fooBar".capitalize().print()
+        val y = java.lang.reflect.Proxy.newProxyInstance(
+                StrObj::class.java.classLoader,
+                arrayOf(StrObj::class.java),
+                { proxy, method, obj ->
+                    when (method.name.print()) {
+                        "get${yfun.name.capitalize()}" -> listOf("hey")
+                        "toString" -> "mock object"
+                        else -> null
+                    }
+
+                }
+        ) as StrObj
+//        anArrayClass.print()
+        y.`loo loo`.print()
+    }
 }
+
+interface Obj<T> {
+    var `loo loo`: List<T>
+}
+
+interface StrObj : Obj<String>
+
+data class ArrayClass(val x: Array<List<Int?>>)
 
 sealed class SealedClass
 data class One(val x: String) : SealedClass()
@@ -541,6 +582,7 @@ data class RecursiveClass(val sample: SimpleClass, val nullableClass: NullableCl
 data class ClassWithEnum(val enum: TheEnum)
 data class ClassWithBigDecimal(val bigDecimal: BigDecimal)
 data class ClassWithList(val list: List<String>)
+data class ClassWithListAndParam(val list: List<String>, val param: String)
 data class ClassWithMutableList(val list: MutableList<String>)
 data class CyclicClass(val cycles: List<CyclicClass>, val cycle: CyclicClass)
 data class ClassWithPrimitives(
