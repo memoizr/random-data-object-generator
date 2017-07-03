@@ -2,11 +2,9 @@
 
 package memoizr.roost
 
-import com.memoizr.assertk.expect
-import com.memoizr.assertk.isEqualTo
-import com.memoizr.assertk.notNull
-import com.memoizr.assertk.of
+import com.memoizr.assertk.*
 import memoizr.roost.noot.*
+import org.junit.Before
 import org.junit.Test
 import java.io.File
 import java.math.BigDecimal
@@ -25,6 +23,11 @@ class RandomGenerationTest {
     val aClassWithMutableList by aRandom<ClassWithMutableList>()
     val aJavaClassWithList by aRandom<JavaClassWithList>()
     val aClassWithPrimitives by aRandom<ClassWithPrimitives>()
+
+    @Before
+    fun setUp() {
+        Seed.testing = true
+    }
 
     @Test
     fun `creates an arbitrary data class`() {
@@ -100,7 +103,6 @@ class RandomGenerationTest {
     fun `it generates an empty list`() {
         expect that aJavaClassWithList.list isEqualTo aJavaClassWithList.list
         expect that aClassWithList.list isEqualTo aClassWithList.list
-//        expect that aClassWithList.list.size isEqualTo Random(Seed.seed).nextInt(5) + 1
         expect that aClassWithMutableList.list.plus("hey") contains mutableListOf("hey")
     }
 
@@ -190,10 +192,11 @@ class RandomGenerationTest {
         expect that anUri _is notNull
     }
 
-    val anArrayClass by aRandom<ArrayClass>()
+    val anArrayClass by aRandom<ClassWithArrays>()
 
     @Test
     fun `it works with arrays`() {
+        expect that anArrayClass is_ notNull
 
 //        intArrayOf() is IntArray
 //        val yfun = StrObj::class.members.print().first()
@@ -215,10 +218,4 @@ class RandomGenerationTest {
 //        y.`loo loo`.print()
     }
 }
-
-interface Obj<T> {
-    var `loo loo`: List<T>
-}
-
-interface StrObj : Obj<String>
 

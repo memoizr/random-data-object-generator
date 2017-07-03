@@ -1,9 +1,63 @@
 package memoizr.roost.noot
+
 import java.math.BigDecimal
 
 sealed class SealedClass
 data class One(val x: String) : SealedClass()
 data class Two(val x: String) : SealedClass()
+
+interface AnInterface
+object AnObject
+data class AClassWithObject(val anObject: AnObject)
+//data class ArrayClass(val x: Array<List<Int?>>)
+data class AnImplementation(val x: String) : AnInterface
+
+data class AClassWithInterface(val inter: AnInterface, val foo: Interface1)
+data class SimpleClass(val name: String)
+data class OtherSimpleClass(val otherName: String)
+data class SimpleCompoundClass(val simpleClass: SimpleClass, val otherSimpleClass: OtherSimpleClass)
+data class NullableClass(val name: String, val nullable: String?)
+data class RecursiveClass(val sample: SimpleClass, val nullableClass: NullableClass)
+data class ClassWithEnum(val enum: TheEnum)
+data class ClassWithBigDecimal(val bigDecimal: BigDecimal)
+data class ClassWithList(val list: List<String>)
+data class ClassWithListAndParam(val list: List<String>, val param: String)
+data class ClassWithMutableList(val list: MutableList<String>)
+data class CyclicClass(val cycles: List<CyclicClass>, val cycle: CyclicClass)
+data class ClassWithArrays(
+        val int: IntArray,
+        val intA: Array<Int>,
+        val short: ShortArray,
+        val shortA: Array<Short>,
+        val long: LongArray,
+        val longA: Array<Long>,
+        val float: FloatArray,
+        val floatA: Array<Float>,
+        val double: DoubleArray,
+        val doubleA: Array<Double>,
+        val boolean: BooleanArray,
+        val booleanA: Array<Boolean>,
+        val byte: ByteArray,
+        val byteA: Array<Byte>,
+        val char: CharArray,
+        val charA: Array<Char>,
+        val objA: Array<SimpleClass>
+)
+
+data class ClassWithPrimitives(
+        val int: Int,
+        val short: Short,
+        val long: Long,
+        val float: Float,
+        val double: Double,
+        val boolean: Boolean,
+        val byte: Byte,
+        val char: Char
+)
+
+enum class TheEnum {
+    One, Two, Three, Four
+}
 
 interface Interface1
 data class Impl1Interface1(val x: String) : Interface1
@@ -322,7 +376,6 @@ data class Impl17Interface15(val x: String) : Interface15
 data class Impl18Interface15(val x: String) : Interface15
 data class Impl19Interface15(val x: String) : Interface15
 
-
 data class Fooed(
         val val1: List<Interface1>,
         val val2: List<Interface2>,
@@ -341,37 +394,3 @@ data class Fooed(
         val val15: List<Interface15>,
         val sealed: List<SealedClass>
 )
-
-interface AnInterface
-object AnObject
-data class AClassWithObject(val anObject: AnObject)
-data class ArrayClass(val x: Array<List<Int?>>)
-data class AnImplementation(val x: String): AnInterface
-data class AClassWithInterface(val inter: AnInterface, val foo: Interface1)
-data class SimpleClass(val name: String)
-data class OtherSimpleClass(val otherName: String)
-data class SimpleCompoundClass(val simpleClass: SimpleClass, val otherSimpleClass: OtherSimpleClass)
-data class NullableClass(val name: String, val nullable: String?)
-data class RecursiveClass(val sample: SimpleClass, val nullableClass: NullableClass)
-data class ClassWithEnum(val enum: TheEnum)
-data class ClassWithBigDecimal(val bigDecimal: BigDecimal)
-data class ClassWithList(val list: List<String>)
-data class ClassWithListAndParam(val list: List<String>, val param: String)
-data class ClassWithMutableList(val list: MutableList<String>)
-data class CyclicClass(val cycles: List<CyclicClass>, val cycle: CyclicClass)
-data class ClassWithPrimitives(
-        val int: Int,
-        val short: Short,
-        val long: Long,
-        val float: Float,
-        val double: Double,
-        val boolean: Boolean,
-        val byte: Byte,
-        val char: Char
-)
-
-enum class TheEnum {
-    One, Two, Three, Four
-}
-
-
