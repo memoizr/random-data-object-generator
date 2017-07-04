@@ -4,11 +4,13 @@ import org.apache.commons.lang3.RandomStringUtils
 import org.reflections.Reflections
 import org.reflections.scanners.SubTypesScanner
 import java.io.File
+import java.lang.reflect.Method
 import java.util.*
 import kotlin.reflect.*
 import kotlin.reflect.KVariance.INVARIANT
 import kotlin.reflect.KVariance.OUT
 import kotlin.reflect.full.createType
+import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.jvmErasure
@@ -181,7 +183,7 @@ private fun <R : Any?> instantiateClazz(type: KType, token: String = "", past: S
         klass.java.isEnum -> klass.java.enumConstants[Random(getSeed(token)).nextInt(klass.java.enumConstants.size)]
         klass.objectInstance != null -> klass.objectInstance
         klass.java.isArray -> instantiateArray(type, token, past, klass)
-        klass.java.isInterface || klass.isSealed -> instantiateInterface<R>(klass, token)
+        klass.java.isInterface || klass.isSealed -> instantiateInterface<R>(klass, token, past)
         else -> instantiateArbitraryClass<R>(klass, token, type, past)
     }
     return result as R
@@ -196,17 +198,47 @@ private fun instantiateArray(type: KType, token: String, past: Set<KClass<*>>, k
     return array
 }
 
-private fun <R : Any?> instantiateInterface(klass: KClass<out Any>, token: String): R {
+private fun <R : Any?> instantiateInterface(klass: KClass<out Any>, token: String, past: Set<KClass<*>>): R {
     val allClasses: MutableSet<out Class<out Any>> =
             if (classes.isEmpty())
                 Reflections("", SubTypesScanner(false)).getSubTypesOf(Any::class.java).apply { classes.addAll(this) }
             else classes
     val implementations = classesMap[klass] ?: allClasses
-            .filter { klass.java.isAssignableFrom(it) }
+            .filter { klass.java.isAssignableFrom(it) && klass.java != it }
             .apply { classesMap.put(klass, this) }
 
-    val implementation = implementations[Random(getSeed(token)).nextInt(implementations.size)]
-    return instantiateClazz<R>(implementation.kotlin.createType(), "$token::${implementation.name}")
+    if (implementations.size == 0)
+        return instantiateNewInterface(klass, token, past) as R
+    else {
+        val implementation = implementations[Random(getSeed(token)).nextInt(implementations.size)]
+        return instantiateClazz<R>(implementation.kotlin.createType(), "$token::${implementation.name}")
+    }
+}
+
+private fun <T : Any> instantiateNewInterface(klass: KClass<T>, token: String, past: Set<KClass<*>>): T {
+    val members = klass.members.plus(java.lang.Object::class.members)
+    val print: Array<Method> = klass.java.methods + Any::class.java.methods
+    val methMap = print.map { method ->
+        method to members.filter { member ->
+            val x: Boolean = (method.name == member.name || method.name == "get${member.name.capitalize()}")
+            x && method.parameters.map { it.parameterizedType} ==
+                    member.valueParameters.map { it.type.javaType }
+        }.firstOrNull()
+    }.toMap()
+    val res = java.lang.reflect.Proxy.newProxyInstance(
+            klass.java.classLoader,
+            arrayOf(klass.java),
+            { proxy, method, obj ->
+                when (method.name) {
+                    "hashCode" -> proxy.toString().hashCode()
+                    "equals" -> proxy.toString().equals(obj[0].toString())
+                    "toString" -> "\$RandomImplementation$${klass.simpleName}"
+                    else -> methMap[method]?.let { instantiateClazz<T>(it.returnType, token, past) } ?:
+                            instantiateClazz(method.returnType.kotlin.createType(), token, past)
+                }
+            }
+    )
+    return res as T
 }
 
 private fun <R : Any?> instantiateArbitraryClass(klass: KClass<out Any>, token: String, type: KType, past: Set<KClass<*>>): R {

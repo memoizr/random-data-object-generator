@@ -9,6 +9,7 @@ import org.junit.Test
 import java.io.File
 import java.math.BigDecimal
 import java.util.*
+import kotlin.reflect.KProperty
 
 class RandomGenerationTest {
     val aSimpleClass by aRandom<SimpleClass>()
@@ -197,25 +198,25 @@ class RandomGenerationTest {
     @Test
     fun `it works with arrays`() {
         expect that anArrayClass is_ notNull
+    }
 
-//        intArrayOf() is IntArray
-//        val yfun = StrObj::class.members.print().first()
-//        StrObj::class.java.methods.asList().print().first()
-//        "-fooBar".capitalize().print()
-//        val y = java.lang.reflect.Proxy.newProxyInstance(
-//                StrObj::class.java.classLoader,
-//                arrayOf(StrObj::class.java),
-//                { proxy, method, obj ->
-//                    when (method.name.print()) {
-//                        "get${yfun.name.capitalize()}" -> listOf("hey")
-//                        "toString" -> "mock object"
-//                        else -> null
-//                    }
-//
-//                }
-//        ) as StrObj
-////        anArrayClass.print()
-//        y.`loo loo`.print()
+    val interfaceImpl by aRandom<InterfaceWithNoImplementations>()
+
+    @Test
+    fun `it works with interfaces with no implementations`() {
+        expect that interfaceImpl.simpleClasses().first() isInstance of<SimpleClass>()
+        expect that interfaceImpl.simpleClasses("").first() isInstance of<String>()
+        expect that interfaceImpl.array().first() isInstance of<SimpleClass>()
+        expect that interfaceImpl.string() isInstance of<String>()
+        expect that interfaceImpl.simpleClass isInstance of<SimpleClass>()
+        expect that interfaceImpl isEqualTo interfaceImpl
     }
 }
 
+interface InterfaceWithNoImplementations {
+    val simpleClass: SimpleClass
+    fun simpleClasses(): List<SimpleClass>
+    fun simpleClasses(string: String): List<String>
+    fun string(): String
+    fun array(): Array<SimpleClass>
+}
