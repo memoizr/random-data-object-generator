@@ -9,7 +9,6 @@ import org.junit.Test
 import java.io.File
 import java.math.BigDecimal
 import java.util.*
-import kotlin.reflect.KProperty
 
 class RandomGenerationTest {
     val aSimpleClass by aRandom<SimpleClass>()
@@ -210,6 +209,21 @@ class RandomGenerationTest {
         expect that interfaceImpl.string() isInstance of<String>()
         expect that interfaceImpl.simpleClass isInstance of<SimpleClass>()
         expect that interfaceImpl isEqualTo interfaceImpl
+    }
+
+    val problematicClass by aRandom<ProblematicConstructorClass>()
+
+    @Test
+    fun `thows meaningful exception when instantiation fails`() {
+        expect thatThrownBy {problematicClass} hasMessageContaining
+                "Something went wrong" hasCauseExactlyInstanceOf
+                Exception::class.java isInstance of<CreationException>()
+    }
+}
+
+class ProblematicConstructorClass {
+    init {
+        throw Exception("gotcha")
     }
 }
 

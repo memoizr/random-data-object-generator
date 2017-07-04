@@ -248,11 +248,21 @@ private fun <R : Any?> instantiateArbitraryClass(klass: KClass<out Any>, token: 
     defaultConstructor.isAccessible = true
     val constructorParameters: List<KParameter> = defaultConstructor.parameters
     val params = type.arguments.toMutableList()
-    return defaultConstructor.call(*(constructorParameters.map {
-        val tpe = if (it.type.jvmErasure == Any::class) params.removeAt(0).type!! else it.type
-        instantiateClazz<Any>(tpe, "$token::${tpe.jvmErasure}::$it", past.plus(klass))
-    }).toTypedArray())
+    val parameters = (constructorParameters.map {
+            val tpe = if (it.type.jvmErasure == Any::class) params.removeAt(0).type!! else it.type
+            instantiateClazz<Any>(tpe, "$token::${tpe.jvmErasure}::$it", past.plus(klass))
+        }).toTypedArray()
+    try {
+        val res = defaultConstructor.call(*parameters)
+        return res
+    } catch (e: Throwable) {
+        throw CreationException("""Something went wrong when trying to instantiate class ${klass}
+         using constructor: $defaultConstructor
+         with values: ${parameters.toList()}""", e.cause)
+    }
 }
+
+class CreationException(message : String, cause: Throwable?): Exception(message, cause)
 
 private fun getArrayClass(type: KType): KClass<out Any> {
     return if (!type.jvmErasure.java.isArray) type.jvmErasure else when (type) {
