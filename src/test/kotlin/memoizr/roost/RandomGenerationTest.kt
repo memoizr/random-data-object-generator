@@ -3,6 +3,7 @@
 package memoizr.roost
 
 import com.memoizr.assertk.*
+import com.sun.jndi.toolkit.url.Uri
 import memoizr.roost.noot.*
 import org.junit.Before
 import org.junit.Test
@@ -203,34 +204,23 @@ class RandomGenerationTest {
 
     @Test
     fun `it works with interfaces with no implementations`() {
-        expect that interfaceImpl.simpleClasses().first() isInstance of<SimpleClass>()
-        expect that interfaceImpl.simpleClasses("").first() isInstance of<String>()
-        expect that interfaceImpl.array().first() isInstance of<SimpleClass>()
+        expect that interfaceImpl.listOfObjects().first() isInstance of<SimpleClass>()
+        expect that interfaceImpl.listOfObjects("").first() isInstance of<String>()
+        expect that interfaceImpl.arrayOfObjects().first() isInstance of<SimpleClass>()
         expect that interfaceImpl.string() isInstance of<String>()
         expect that interfaceImpl.simpleClass isInstance of<SimpleClass>()
         expect that interfaceImpl isEqualTo interfaceImpl
     }
 
-    val problematicClass by aRandom<ProblematicConstructorClass>()
+    val problematicClass by aRandom<Uri>()
 
     @Test
-    fun `thows meaningful exception when instantiation fails`() {
+    fun `throws meaningful exception when instantiation fails`() {
         expect thatThrownBy {problematicClass} hasMessageContaining
-                "Something went wrong" hasCauseExactlyInstanceOf
+                "Something went wrong" hasMessageContaining
+                "with values" hasMessageContaining
+                "y=" hasMessageContaining
+                "x=" hasCauseExactlyInstanceOf
                 Exception::class.java isInstance of<CreationException>()
     }
-}
-
-class ProblematicConstructorClass {
-    init {
-        throw Exception("gotcha")
-    }
-}
-
-interface InterfaceWithNoImplementations {
-    val simpleClass: SimpleClass
-    fun simpleClasses(): List<SimpleClass>
-    fun simpleClasses(string: String): List<String>
-    fun string(): String
-    fun array(): Array<SimpleClass>
 }

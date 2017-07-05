@@ -6,6 +6,20 @@ sealed class SealedClass
 data class One(val x: String) : SealedClass()
 data class Two(val x: String) : SealedClass()
 
+data class ProblematicConstructorClass(val x: String, val y: SimpleClass) {
+    init {
+        throw Exception("gotcha")
+    }
+}
+
+interface InterfaceWithNoImplementations {
+    val simpleClass: SimpleClass
+    fun listOfObjects(): List<SimpleClass>
+    fun listOfObjects(string: String): List<String>
+    fun string(): String
+    fun arrayOfObjects(): Array<SimpleClass>
+}
+
 interface AnInterface
 object AnObject
 data class AClassWithObject(val anObject: AnObject)

@@ -256,9 +256,10 @@ private fun <R : Any?> instantiateArbitraryClass(klass: KClass<out Any>, token: 
         val res = defaultConstructor.call(*parameters)
         return res
     } catch (e: Throwable) {
+        val namedParameters = parameters.zip(defaultConstructor.parameters.map { it.name }).map { "${it.second}=${it.first}" }
         throw CreationException("""Something went wrong when trying to instantiate class ${klass}
          using constructor: $defaultConstructor
-         with values: ${parameters.toList()}""", e.cause)
+         with values: ${namedParameters}""", e.cause)
     }
 }
 
