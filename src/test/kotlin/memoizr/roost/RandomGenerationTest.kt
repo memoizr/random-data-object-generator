@@ -3,7 +3,6 @@
 package memoizr.roost
 
 import com.memoizr.assertk.*
-import com.sun.jndi.toolkit.url.Uri
 import memoizr.roost.noot.*
 import org.junit.Before
 import org.junit.Test
@@ -94,7 +93,7 @@ class RandomGenerationTest {
     fun `it allows to customize object creation`() {
         custom {
             val bigDecimal: (Long) -> BigDecimal = ::BigDecimal
-            bigDecimal.create(some())
+            bigDecimal.create(any())
         }
 
         expect that aClassWithBigDecimal isInstance of<ClassWithBigDecimal>()
@@ -212,7 +211,7 @@ class RandomGenerationTest {
         expect that interfaceImpl isEqualTo interfaceImpl
     }
 
-    val problematicClass by aRandom<Uri>()
+    val problematicClass by aRandom<ProblematicConstructorClass>()
 
     @Test
     fun `throws meaningful exception when instantiation fails`() {

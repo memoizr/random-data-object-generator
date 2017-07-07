@@ -21,3 +21,4 @@ public class Foo {
         void x() throws IllegalAccessError;
     }
 }
+

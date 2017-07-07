@@ -1,13 +1,12 @@
 package memoizr.roost.noot
 
+import memoizr.roost.Seed
 import memoizr.roost.aRandom
-import memoizr.roost.create
+import memoizr.roost.custom
 import memoizr.roost.print
-import memoizr.roost.some
 import org.junit.Test
 import java.io.File
 import java.io.Serializable
-import kotlin.reflect.KFunction1
 
 class Test {
     val clip by aRandom<Clip>()
@@ -23,27 +22,17 @@ class Test {
         clip.print()
     }
 
+    val x by aRandom<SimpleClass>()
+
     @Test
     fun ff() {
+//        Seed.seed = 1094900
 
-//        List::class.createType(listOf(KTypeProjection(OUT, String::class.createType()))).print()
+        custom {
+            ::SimpleClass.create(aString() + " @ " + aString() + "." + choose("com", "org", "co.uk"))
+        }
 
-//        List::class(OUT, String::class).print()
-
-//        listKType<String>()
-//        ClipId(a(String::class())).print()
-//        List::class of String::class
-//        ClassWithList(a(listKType<String>())).print()
-//        ClassWithList(a(Fooed::class of SimpleClass::class)).print()
-
-
-        val kFunction1: KFunction1<@ParameterName(name = "name") String, SimpleClass> = ::SimpleClass
-
-        kFunction1.create(a = "").print()
-
-        ::Size.create(some(), some()).print()
-
-        ::SimpleCompoundClass.create(::SimpleClass.create().copy(""), some()).print()
+        x.print()
     }
 
 }
