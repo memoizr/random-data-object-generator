@@ -35,7 +35,7 @@ class Creator(private var token: String) {
         val type = R::class.createType()
         val constructors = klass.constructors.filter { !it.parameters.any { (it.type.jvmErasure == klass) } }.toList()
         if (constructors.size == 0 && klass.constructors.any { it.parameters.any { (it.type.jvmErasure == klass) } }) throw CyclicException()
-        val defaultConstructor: KFunction<R> = constructors[Random(getSeed(token)).nextInt(constructors.size)]
+        val defaultConstructor: KFunction<R> = constructors[pseudoRandom(token).nextInt(constructors.size)]
         defaultConstructor.isAccessible = true
         val constructorParameters: List<KParameter> = defaultConstructor.parameters
         val params = type.arguments.toMutableList()
@@ -47,7 +47,7 @@ class Creator(private var token: String) {
 
     fun <A> doit(param: KParameter, params: MutableList<KTypeProjection>, token: String): A {
         val tpe = if (param.type.jvmErasure == Any::class) params.removeAt(0).type!! else param.type
-        val res = if (param.type.isMarkedNullable && Random(getSeed(token)).nextBoolean()) null else {
+        val res = if (param.type.isMarkedNullable && pseudoRandom(token).nextBoolean()) null else {
             instantiateClazz<Any>(tpe, "$token::${tpe.javaType.typeName}::$param")
         } as A
         return res
