@@ -48,7 +48,7 @@ class Creator(private var token: String) {
     fun <A> doit(param: KParameter, params: MutableList<KTypeProjection>, token: String): A {
         val tpe = if (param.type.jvmErasure == Any::class) params.removeAt(0).type!! else param.type
         val res = if (param.type.isMarkedNullable && pseudoRandom(token).nextBoolean()) null else {
-            instantiateClazz<Any>(tpe, "$token::${tpe.javaType.typeName}::$param")
+            instantiateClazz(tpe, "$token::${tpe.javaType.typeName}::$param")
         } as A
         return res
     }

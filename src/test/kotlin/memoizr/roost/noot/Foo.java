@@ -5,12 +5,8 @@ public class Foo {
 
     @Test
     public void foo() {
-        System.out.println("noo");
 
-//        Integer[] x = (Integer[]) new Object[3];
-        Integer[] y = this.y(Integer.class);
-        y[0] = 10;
-        System.out.println(y);
+
     }
 
     public <T> T[] y(Class<T> klass) {

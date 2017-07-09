@@ -38,7 +38,7 @@ object Seed {
         objectFactory.put(List::class, { type, past, token -> list(type, token, past) })
         objectFactory.put(Set::class, { type, past, token -> list(type, token, past).toSet() })
         objectFactory.put(kotlin.collections.Map::class, { type, past, token ->
-            list(type, token, past).map { Pair(it, instantiateClazz<Any>(type.arguments[1].type!!, token)) }.toMap()
+            list(type, token, past).map { Pair(it, instantiateClazz(type.arguments[1].type!!, token)) }.toMap()
         })
 
         objectFactory.put(IntArray::class, { type, past, token -> list(Int::class, token, past).toIntArray() })

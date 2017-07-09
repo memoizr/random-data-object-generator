@@ -24,6 +24,8 @@ repositories {
 }
 
 dependencies {
+
+    compile group: 'dom4j', name: 'dom4j', version: '1.6.1'
     compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
     compile "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
     compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.5'
