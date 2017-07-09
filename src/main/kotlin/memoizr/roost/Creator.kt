@@ -1,6 +1,7 @@
 package memoizr.roost
 
 import java.util.*
+import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.KTypeProjection
@@ -18,16 +19,18 @@ class Creator(private var token: String) {
         val token = ""
         val klass = R::class
         val type = R::class.createType()
-        val constructors = klass.constructors.filter { !it.parameters.any { (it.type.jvmErasure == klass) } }.toList()
-        if (constructors.size == 0 && klass.constructors.any { it.parameters.any { (it.type.jvmErasure == klass) } }) throw CyclicException()
+        val constructors = getConstructor(klass)
+        if (constructors.isEmpty() && klass.constructors.any { it.parameters.any { (it.type.jvmErasure == klass) } }) throw CyclicException()
         val defaultConstructor: KFunction<R> = constructors.filter { it.parameters[0].type.jvmErasure == A::class }.first()
         defaultConstructor.isAccessible = true
         val constructorParameters: List<KParameter> = defaultConstructor.parameters
         val params = type.arguments.toMutableList()
         val param = constructorParameters[0]
-        val res = doit<A>(param, params, token)
+        val res = instantiateValue<A>(param, params, token)
         return invoke(if (a == some) res else a)
     }
+
+    fun <R : Any> getConstructor(klass: KClass<R>) = klass.constructors.filter { !it.parameters.any { (it.type.jvmErasure == klass) } }.toList()
 
     inline fun <A, B, reified R : Any> ((A, B) -> R).create(a: A = any(), b: B = any()): R {
         val token = ""
@@ -40,17 +43,14 @@ class Creator(private var token: String) {
         val constructorParameters: List<KParameter> = defaultConstructor.parameters
         val params = type.arguments.toMutableList()
         val param = constructorParameters[0]
-        val res = doit<A>(param, params, token)
-        val resb = doit<B>(constructorParameters[1], params, token)
+        val res = instantiateValue<A>(param, params, token)
+        val resb = instantiateValue<B>(constructorParameters[1], params, token)
         return invoke(if (a == some) res else a, if (b == some) resb else b)
     }
 
-    fun <A> doit(param: KParameter, params: MutableList<KTypeProjection>, token: String): A {
-        val tpe = if (param.type.jvmErasure == Any::class) params.removeAt(0).type!! else param.type
-        val res = if (param.type.isMarkedNullable && pseudoRandom(token).nextBoolean()) null else {
-            instantiateClazz(tpe, "$token::${tpe.javaType.typeName}::$param")
-        } as A
-        return res
+    fun <A> instantiateValue(parameter: KParameter, genericParameters: MutableList<KTypeProjection>, token: String): A {
+        val tpe = if (parameter.type.jvmErasure == Any::class) genericParameters.removeAt(0).type!! else parameter.type
+        return instantiateClass(tpe, "$token::${tpe.javaType.typeName}::$parameter") as A
     }
 
     val aChar by lazy { aChar(token) }

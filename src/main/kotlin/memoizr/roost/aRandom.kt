@@ -33,7 +33,7 @@ class aRandom<out T : Any>(private val customization: T.() -> T = { this }) {
     private var lastSeed = Seed.seed
 
     operator fun getValue(hostClass: Any, property: KProperty<*>): T {
-        fun getClass() = instantiateClazz(property.returnType, "${hostClass::class.java.canonicalName}::${property.name}")
+        fun getClass() = instantiateClass(property.returnType, "${hostClass::class.java.canonicalName}::${property.name}")
                 .let {
                     lastSeed = Seed.seed
                     val res = it as T
@@ -71,25 +71,32 @@ internal fun aList(typeProjection: KTypeProjection, token: String, parentClasses
     return items.map {
         if (klass == List::class) {
             aList(type.arguments.first(), "$token::$it", parentClasses)
-        } else instantiateClazz(type, "$token::$it", parentClasses)
+        } else instantiateClass(type, "$token::$it", parentClasses)
     }
 }
 
-internal fun instantiateClazz(type: KType, token: String = "", parentClasses: Set<KClass<*>> = emptySet()): Any? {
-    val klass = getArrayClass(type)
+internal fun instantiateClass(type: KType, token: String = "", parentClasses: Set<KClass<*>> = emptySet()): Any? {
+    fun KClass<out Any>.isAnInterfaceOrSealed() = this.java.isInterface || this.isSealed
+    fun KClass<out Any>.isAnArray() = this.java.isArray
+    fun KClass<out Any>.isAnEnum() = this.java.isEnum
+    fun KClass<out Any>.isAnObject() = this.objectInstance != null
+    fun KClass<out Any>.thereIsACustomFactory() = this in objectFactory
+    fun isNullable(): Boolean = type.isMarkedNullable && pseudoRandom(token).nextInt() % 2 == 0
 
+    val klass = getArrayClass(type)
     parentClasses shouldNotContain klass
 
-    val result = if (shouldBeNullable(type, token)) null else when {
-        klass in objectFactory -> objectFactory[klass]?.invoke(type, parentClasses, token)
-        klass.java.isEnum -> klass.java.enumConstants[anInt(max = klass.java.enumConstants.size)]
-        klass.objectInstance != null -> klass.objectInstance
-        klass.java.isArray -> instantiateArray(type, token, parentClasses, klass)
-        klass.java.isInterface || klass.isSealed -> instantiateInterface(klass, token, parentClasses)
+    return when {
+        isNullable() -> null
+        klass.thereIsACustomFactory() -> objectFactory[klass]?.invoke(type, parentClasses, token)
+        klass.isAnObject() -> klass.objectInstance
+        klass.isAnEnum() -> klass.java.enumConstants[anInt(max = klass.java.enumConstants.size)]
+        klass.isAnArray() -> instantiateArray(type, token, parentClasses, klass)
+        klass.isAnInterfaceOrSealed() -> instantiateInterface(klass, token, parentClasses)
         else -> instantiateArbitraryClass(klass, token, type, parentClasses)
     }
-    return result
 }
+
 
 private fun instantiateArray(type: KType, token: String, past: Set<KClass<*>>, klass: KClass<out Any>): Array<Any?> {
     val typeProjection = type.arguments.first()
@@ -97,9 +104,6 @@ private fun instantiateArray(type: KType, token: String, past: Set<KClass<*>>, k
     val array = newInstance(typeProjection.type!!.jvmErasure!!.java, list.size) as Array<Any?>
     return array.apply { list.forEachIndexed { index, any -> array[index] = any } }
 }
-
-operator fun <T> Boolean.rangeTo(yes: () -> T): T? = if (this) yes() else null
-operator fun <T> Boolean.invoke(yes: () -> T): T? = if (this) yes() else null
 
 private fun instantiateInterface(klass: KClass<out Any>, token: String, past: Set<KClass<*>>): Any {
     val allClassesInModule = classes.isEmpty().then {
@@ -110,31 +114,25 @@ private fun instantiateInterface(klass: KClass<out Any>, token: String, past: Se
             .apply { classesMap.put(klass, this) }
 
     return implementations.getOrNull(pseudoRandom(token).int(implementations.size))
-            ?.let { instantiateClazz(it.kotlin.createType(), "$token::${it.name}") }
+            ?.let { instantiateClass(it.kotlin.createType(), "$token::${it.name}") }
             ?: instantiateNewInterface(klass, token, past)
 }
-
-private fun Random.int(bound: Int) = if (bound == 0) 0 else nextInt(bound)
-
-private fun shouldBeNullable(type: KType, token: String) = type.isMarkedNullable && pseudoRandom(token).nextInt() % 2 == 0
 
 infix private fun Set<KClass<*>>.shouldNotContain(klass: KClass<*>) {
     if (isAllowedCyclic(klass) && this.contains(klass)) throw CyclicException()
 }
 
-private fun isAllowedCyclic(klass: KClass<out Any>) = klass != List::class && klass != Set::class && klass != Map::class && !klass.java.isArray
-
-private fun <T : Any> instantiateNewInterface(klass: KClass<T>, token: String, past: Set<KClass<*>>): T {
-    val members = klass.members.plus(Object::class.members)
+private fun instantiateNewInterface(klass: KClass<*>, token: String, past: Set<KClass<*>>): Any {
+    val kMembers = klass.members.plus(Object::class.members)
     val javaMethods: Array<Method> = klass.java.methods + Any::class.java.methods
     val methMap = javaMethods.map { method ->
-        method to members.filter { member ->
-            val x: Boolean = (method.name == member.name || method.name == "get${member.name.capitalize()}")
-            x && method.parameters.map { it.parameterizedType } ==
+        method to kMembers.filter { member ->
+            val sameName: Boolean = (method.name == member.name || method.name == "get${member.name.capitalize()}")
+            sameName && method.parameters.map { it.parameterizedType } ==
                     member.valueParameters.map { it.type.javaType }
         }.firstOrNull()
     }.toMap()
-    val res = Proxy.newProxyInstance(
+    return Proxy.newProxyInstance(
             klass.java.classLoader,
             arrayOf(klass.java),
             { proxy, method, obj ->
@@ -142,24 +140,22 @@ private fun <T : Any> instantiateNewInterface(klass: KClass<T>, token: String, p
                     "hashCode" -> proxy.toString().hashCode()
                     "equals" -> proxy.toString().equals(obj[0].toString())
                     "toString" -> "\$RandomImplementation$${klass.simpleName}"
-                    else -> methMap[method]?.let { instantiateClazz(it.returnType, token, past) } ?:
-                            instantiateClazz(method.returnType.kotlin.createType(), token, past)
+                    else -> methMap[method]?.let { instantiateClass(it.returnType, token, past) } ?:
+                            instantiateClass(method.returnType.kotlin.createType(), token, past)
                 }
             }
     )
-    return res as T
 }
 
-internal fun <R : Any?> instantiateArbitraryClass(klass: KClass<out Any>, token: String, type: KType, past: Set<KClass<*>>): R {
+internal fun instantiateArbitraryClass(klass: KClass<out Any>, token: String, type: KType, past: Set<KClass<*>>): Any? {
     val constructors = klass.constructors.filter { !it.parameters.any { (it.type.jvmErasure == klass) } }.toList()
     if (constructors.isEmpty() && klass.constructors.any { it.parameters.any { (it.type.jvmErasure == klass) } }) throw CyclicException()
-    val defaultConstructor = constructors[pseudoRandom(token).nextInt(constructors.size)] as KFunction<R>
+    val defaultConstructor = constructors[pseudoRandom(token).int(constructors.size)] as KFunction<*>
     defaultConstructor.isAccessible = true
-    val constructorParameters: List<KParameter> = defaultConstructor.parameters
     val params = type.arguments.toMutableList()
-    val parameters = (constructorParameters.map {
+    val parameters = (defaultConstructor.parameters.map {
         val tpe = if (it.type.jvmErasure == Any::class) params.removeAt(0).type!! else it.type
-        instantiateClazz(tpe, "$token::${tpe.jvmErasure}::$it", past.plus(klass))
+        instantiateClass(tpe, "$token::${tpe.jvmErasure}::$it", past.plus(klass))
     }).toTypedArray()
     try {
         val res = defaultConstructor.call(*parameters)
@@ -170,22 +166,6 @@ internal fun <R : Any?> instantiateArbitraryClass(klass: KClass<out Any>, token:
          using constructor: $defaultConstructor
          with values: $namedParameters""", e.cause)
     }
-}
-
-val Boolean.then: Positive get() {
-    return Positive(this)
-}
-
-val Boolean.otherwise: Negative get() {
-    return Negative(this)
-}
-
-class Positive(private val boolean: Boolean) {
-    operator fun <T> invoke(yes: () -> T): T? = if (boolean) yes() else null
-}
-
-class Negative(private val boolean: Boolean) {
-    operator fun <T> invoke(yes: () -> T): T? = if (boolean) null else yes()
 }
 
 private fun getArrayClass(type: KType): KClass<out Any> {
@@ -208,6 +188,28 @@ private fun getArrayClass(type: KType): KClass<out Any> {
         Array<Char>::class.createType(listOf(KTypeProjection(INVARIANT, Char::class.createType()))) -> Array<Char>::class
         else -> type.jvmErasure
     }
+}
+
+private fun Random.int(bound: Int) = if (bound == 0) 0 else nextInt(bound)
+
+private fun shouldBeNullable(type: KType, token: String) = type.isMarkedNullable && pseudoRandom(token).nextInt() % 2 == 0
+
+private fun isAllowedCyclic(klass: KClass<out Any>) = klass != List::class && klass != Set::class && klass != Map::class && !klass.java.isArray
+
+val Boolean.then: Positive get() {
+    return Positive(this)
+}
+
+val Boolean.otherwise: Negative get() {
+    return Negative(this)
+}
+
+class Positive(private val boolean: Boolean) {
+    operator fun <T> invoke(yes: () -> T): T? = if (boolean) yes() else null
+}
+
+class Negative(private val boolean: Boolean) {
+    operator fun <T> invoke(yes: () -> T): T? = if (boolean) null else yes()
 }
 
 private val classes: MutableSet<Class<out Any>> = mutableSetOf()
