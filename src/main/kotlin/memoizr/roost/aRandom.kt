@@ -187,19 +187,19 @@ private fun Random.int(bound: Int) = if (bound == 0) 0 else nextInt(bound)
 
 private fun isAllowedCyclic(klass: KClass<out Any>) = klass != List::class && klass != Set::class && klass != Map::class && !klass.java.isArray
 
-val Boolean.then: Positive get() {
+internal val Boolean.then: Positive get() {
     return Positive(this)
 }
 
-val Boolean.otherwise: Negative get() {
+internal val Boolean.otherwise: Negative get() {
     return Negative(this)
 }
 
-class Positive(private val boolean: Boolean) {
+internal class Positive(private val boolean: Boolean) {
     operator fun <T> invoke(yes: () -> T): T? = if (boolean) yes() else null
 }
 
-class Negative(private val boolean: Boolean) {
+internal class Negative(private val boolean: Boolean) {
     operator fun <T> invoke(yes: () -> T): T? = if (boolean) null else yes()
 }
 
