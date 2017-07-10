@@ -9,10 +9,10 @@ import java.lang.reflect.Proxy
 import java.util.*
 import kotlin.reflect.*
 import kotlin.reflect.KVariance.INVARIANT
-import kotlin.reflect.KVariance.OUT
 import kotlin.reflect.full.createType
 import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.isAccessible
+import kotlin.reflect.jvm.javaMethod
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.jvmErasure
 
@@ -24,39 +24,38 @@ class aRandomListOf<out T : Any>(private val size: Int? = null) {
         val list = aList(typeOfListItems, "$hostClassName::$propertyName", emptySet(), size?.dec())
         return list as List<T>
     }
-}
 
-private fun KType.outProjection() = KTypeProjection(OUT, this)
+    private fun KType.outProjection() = KTypeProjection(KVariance.OUT, this)
+}
 
 class aRandom<out T : Any>(private val customization: T.() -> T = { this }) {
     private var t: T? = null
     private var lastSeed = Seed.seed
 
     operator fun getValue(hostClass: Any, property: KProperty<*>): T {
-        fun getClass() = instantiateClass(property.returnType, "${hostClass::class.java.canonicalName}::${property.name}")
-                .let {
-                    lastSeed = Seed.seed
-                    val res = it as T
-                    t = res
-                    customization(res)
-                }
 
-        return if (t != null && lastSeed == Seed.seed) t!! else getClass()
+        return if (t != null && lastSeed == Seed.seed) t!!
+        else instantiateClass(property.returnType, "${hostClass::class.java.canonicalName}::${property.name}").let {
+            lastSeed = Seed.seed
+            val res = it as T
+            t = res
+            customization(res)
+        }
     }
 }
 
-internal fun hashString(string: String): Long = UUID.nameUUIDFromBytes(string.toByteArray()).mostSignificantBits
 private val maxChar = 59319
 
-internal fun aChar(token: String = ""): Char = pseudoRandom(token).nextInt(maxChar).toChar()
-internal fun anInt(token: String = "", max: Int? = null): Int = max?.let { pseudoRandom(token).nextInt(it) } ?: pseudoRandom(token).nextInt()
-internal fun aLong(token: String = ""): Long = pseudoRandom(token).nextLong()
-internal fun aDouble(token: String = ""): Double = pseudoRandom(token).nextDouble()
-internal fun aShort(token: String = ""): Short = pseudoRandom(token).nextInt(Short.MAX_VALUE.toInt()).toShort()
-internal fun aFloat(token: String = ""): Float = pseudoRandom(token).nextFloat()
-internal fun aByte(token: String = ""): Byte = pseudoRandom(token).nextInt(255).toByte()
-internal fun aBoolean(token: String = ""): Boolean = pseudoRandom(token).nextBoolean()
-internal fun aString(token: String = ""): String = pseudoRandom(token).let {
+internal fun hashString(string: String): Long = UUID.nameUUIDFromBytes(string.toByteArray()).mostSignificantBits
+internal fun aChar(token: String): Char = pseudoRandom(token).nextInt(maxChar).toChar()
+internal fun anInt(token: String, max: Int? = null): Int = max?.let { pseudoRandom(token).nextInt(it) } ?: pseudoRandom(token).nextInt()
+internal fun aLong(token: String): Long = pseudoRandom(token).nextLong()
+internal fun aDouble(token: String): Double = pseudoRandom(token).nextDouble()
+internal fun aShort(token: String): Short = pseudoRandom(token).nextInt(Short.MAX_VALUE.toInt()).toShort()
+internal fun aFloat(token: String): Float = pseudoRandom(token).nextFloat()
+internal fun aByte(token: String): Byte = pseudoRandom(token).nextInt(255).toByte()
+internal fun aBoolean(token: String): Boolean = pseudoRandom(token).nextBoolean()
+internal fun aString(token: String): String = pseudoRandom(token).let {
     RandomStringUtils.random(Math.max(1, it.nextInt(Seed.maxStringLength)), 0, maxChar, true, true, null, it)
 }
 
@@ -90,13 +89,12 @@ internal fun instantiateClass(type: KType, token: String = "", parentClasses: Se
         isNullable() -> null
         klass.thereIsACustomFactory() -> objectFactory[klass]?.invoke(type, parentClasses, token)
         klass.isAnObject() -> klass.objectInstance
-        klass.isAnEnum() -> klass.java.enumConstants[anInt(max = klass.java.enumConstants.size)]
+        klass.isAnEnum() -> klass.java.enumConstants[anInt(token, max = klass.java.enumConstants.size)]
         klass.isAnArray() -> instantiateArray(type, token, parentClasses, klass)
         klass.isAnInterfaceOrSealed() -> instantiateInterface(klass, token, parentClasses)
         else -> instantiateArbitraryClass(klass, token, type, parentClasses)
     }
 }
-
 
 private fun instantiateArray(type: KType, token: String, past: Set<KClass<*>>, klass: KClass<out Any>): Array<Any?> {
     val typeProjection = type.arguments.first()
@@ -109,42 +107,40 @@ private fun instantiateInterface(klass: KClass<out Any>, token: String, past: Se
     val allClassesInModule = classes.isEmpty().then {
         Reflections("", SubTypesScanner(false)).getSubTypesOf(Any::class.java).apply { classes.addAll(this) }
     } ?: classes
-    val implementations = classesMap[klass] ?: allClassesInModule
+    val allImplementationsInModule = classesMap[klass] ?: allClassesInModule
             .filter { klass.java != it && klass.java.isAssignableFrom(it) }
             .apply { classesMap.put(klass, this) }
 
-    return implementations.getOrNull(pseudoRandom(token).int(implementations.size))
+    return allImplementationsInModule.getOrNull(pseudoRandom(token).int(allImplementationsInModule.size))
             ?.let { instantiateClass(it.kotlin.createType(), "$token::${it.name}") }
             ?: instantiateNewInterface(klass, token, past)
-}
-
-infix private fun Set<KClass<*>>.shouldNotContain(klass: KClass<*>) {
-    if (isAllowedCyclic(klass) && this.contains(klass)) throw CyclicException()
 }
 
 private fun instantiateNewInterface(klass: KClass<*>, token: String, past: Set<KClass<*>>): Any {
     val kMembers = klass.members.plus(Object::class.members)
     val javaMethods: Array<Method> = klass.java.methods + Any::class.java.methods
-    val methMap = javaMethods.map { method ->
-        method to kMembers.filter { member ->
-            val sameName: Boolean = (method.name == member.name || method.name == "get${member.name.capitalize()}")
-            sameName && method.parameters.map { it.parameterizedType } ==
-                    member.valueParameters.map { it.type.javaType }
-        }.firstOrNull()
+    val methodReturnTypes = javaMethods.map { method ->
+        val returnType = kMembers.find { member ->
+            fun hasNameName(): Boolean = (method.name == member.name || method.name == "get${member.name.capitalize()}")
+            fun hasSameArguments() = method.parameters.map { it.parameterizedType } == member.valueParameters.map { it.type.javaType }
+            hasNameName() && hasSameArguments()
+        }?.returnType
+        method to returnType
     }.toMap()
-    return Proxy.newProxyInstance(
-            klass.java.classLoader,
-            arrayOf(klass.java),
-            { proxy, method, obj ->
-                when (method.name) {
-                    "hashCode" -> proxy.toString().hashCode()
-                    "equals" -> proxy.toString().equals(obj[0].toString())
-                    "toString" -> "\$RandomImplementation$${klass.simpleName}"
-                    else -> methMap[method]?.let { instantiateClass(it.returnType, token, past) } ?:
-                            instantiateClass(method.returnType.kotlin.createType(), token, past)
-                }
-            }
-    )
+
+    return Proxy.newProxyInstance(klass.java.classLoader, arrayOf(klass.java)) { proxy, method, obj ->
+        when (method.name) {
+            Any::hashCode.javaMethod?.name.toString() -> proxy.toString().hashCode()
+            Any::equals.javaMethod?.name.toString() -> proxy.toString().equals(obj[0].toString())
+            Any::toString.javaMethod?.name.toString() -> "\$RandomImplementation$${klass.simpleName}"
+            else -> methodReturnTypes[method]?.let { instantiateClass(it, token, past) } ?:
+                    instantiateClass(method.returnType.kotlin.createType(), token, past)
+        }
+    }
+}
+
+infix private fun Set<KClass<*>>.shouldNotContain(klass: KClass<*>) {
+    if (isAllowedCyclic(klass) && this.contains(klass)) throw CyclicException()
 }
 
 internal fun instantiateArbitraryClass(klass: KClass<out Any>, token: String, type: KType, past: Set<KClass<*>>): Any? {
@@ -191,8 +187,6 @@ private fun getArrayClass(type: KType): KClass<out Any> {
 }
 
 private fun Random.int(bound: Int) = if (bound == 0) 0 else nextInt(bound)
-
-private fun shouldBeNullable(type: KType, token: String) = type.isMarkedNullable && pseudoRandom(token).nextInt() % 2 == 0
 
 private fun isAllowedCyclic(klass: KClass<out Any>) = klass != List::class && klass != Set::class && klass != Map::class && !klass.java.isArray
 
