@@ -18,14 +18,12 @@ import kotlin.reflect.jvm.jvmErasure
 
 class aRandomListOf<out T : Any>(private val size: Int? = null) {
     operator fun getValue(host: Any, property: KProperty<*>): List<T> {
-        val typeOfListItems = property.returnType.arguments.first().type!!.outProjection()
+        val typeOfListItems = property.returnType.arguments.first().type!!
         val hostClassName = host::class.java.canonicalName
         val propertyName = property.name
         val list = aList(typeOfListItems, "$hostClassName::$propertyName", emptySet(), size?.dec())
         return list as List<T>
     }
-
-    private fun KType.outProjection() = KTypeProjection(KVariance.OUT, this)
 }
 
 class aRandom<out T : Any>(private val customization: T.() -> T = { this }) {
@@ -59,8 +57,7 @@ internal fun aString(token: String): String = pseudoRandom(token).let {
     RandomStringUtils.random(Math.max(1, it.nextInt(Seed.maxStringLength)), 0, maxChar, true, true, null, it)
 }
 
-internal fun aList(typeProjection: KTypeProjection, token: String, parentClasses: Set<KClass<*>>, size: Int? = null): List<*> {
-    val type = typeProjection.type!!
+internal fun aList(type: KType, token: String, parentClasses: Set<KClass<*>>, size: Int? = null): List<*> {
     val klass = type.jvmErasure
 
     parentClasses shouldNotContain klass
@@ -69,7 +66,7 @@ internal fun aList(typeProjection: KTypeProjection, token: String, parentClasses
 
     return items.map {
         if (klass == List::class) {
-            aList(type.arguments.first(), "$token::$it", parentClasses)
+            aList(type.arguments.first().type!!, "$token::$it", parentClasses)
         } else instantiateClass(type, "$token::$it", parentClasses)
     }
 }
@@ -97,9 +94,9 @@ internal fun instantiateClass(type: KType, token: String = "", parentClasses: Se
 }
 
 private fun instantiateArray(type: KType, token: String, past: Set<KClass<*>>, klass: KClass<out Any>): Array<Any?> {
-    val typeProjection = type.arguments.first()
-    val list = aList(typeProjection, token, past.plus(klass))
-    val array = newInstance(typeProjection.type!!.jvmErasure!!.java, list.size) as Array<Any?>
+    val genericType = type.arguments.first().type!!
+    val list = aList(genericType, token, past.plus(klass))
+    val array = newInstance(genericType.jvmErasure!!.java, list.size) as Array<Any?>
     return array.apply { list.forEachIndexed { index, any -> array[index] = any } }
 }
 

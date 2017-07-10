@@ -20,8 +20,8 @@ object Seed {
 
     init {
         println("setting seed: $seed")
-        fun list(type: KType, token: String, past: Set<KClass<*>>) = aList(type.arguments.first(), token, past.plus(type.jvmErasure))
-        fun <T : Any> list(klass: KClass<T>, token: String, past: Set<KClass<*>>): List<T> = aList(KTypeProjection(KVariance.OUT, klass.createType()), token, past) as List<T>
+        fun list(type: KType, token: String, past: Set<KClass<*>>) = aList(type.arguments.first().type!!, token, past.plus(type.jvmErasure))
+        fun <T : Any> list(klass: KClass<T>, token: String, past: Set<KClass<*>>): List<T> = aList(klass.createType(), token, past) as List<T>
 
         objectFactory.put(kotlin.String::class, { type, past, token -> aString(token) })
         objectFactory.put(kotlin.Byte::class, { type, past, token -> aByte(token) })
