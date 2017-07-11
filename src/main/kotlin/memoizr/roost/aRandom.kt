@@ -71,7 +71,7 @@ internal fun aList(type: KType, token: String, parentClasses: Set<KClass<*>>, si
     }
 }
 
-internal fun instantiateClass(type: KType, token: String = "", parentClasses: Set<KClass<*>> = emptySet()): Any? {
+fun instantiateClass(type: KType, token: String = "", parentClasses: Set<KClass<*>> = emptySet()): Any? {
     fun KClass<out Any>.isAnInterfaceOrSealed() = this.java.isInterface || this.isSealed
     fun KClass<out Any>.isAnArray() = this.java.isArray
     fun KClass<out Any>.isAnEnum() = this.java.isEnum

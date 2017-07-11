@@ -93,7 +93,7 @@ class RandomGenerationTest {
     fun `it allows to customize object creation`() {
         custom {
             val bigDecimal: (Long) -> BigDecimal = ::BigDecimal
-            bigDecimal.create(any())
+            bigDecimal[any()]
         }
 
         expect that aClassWithBigDecimal isInstance of<ClassWithBigDecimal>()

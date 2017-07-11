@@ -6,6 +6,7 @@ import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.KTypeProjection
 import kotlin.reflect.full.createType
+import kotlin.reflect.full.defaultType
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
 import kotlin.reflect.jvm.jvmErasure
@@ -15,10 +16,10 @@ class Creator(private var token: String) {
 
     fun <T> any(): T = some as T
 
-    inline fun <reified A, reified R : Any> ((A) -> R).create(a: A = any()): R {
+    operator inline fun <reified A, reified R : Any> ((A) -> R).get(a: A = any()): R {
         val token = ""
         val klass = R::class
-        val type = R::class.createType()
+        val type = klass.defaultType
         val constructors = getConstructor(klass)
         if (constructors.isEmpty() && klass.constructors.any { it.parameters.any { (it.type.jvmErasure == klass) } }) throw CyclicException()
         val defaultConstructor: KFunction<R> = constructors.filter { it.parameters[0].type.jvmErasure == A::class }.first()
@@ -32,7 +33,7 @@ class Creator(private var token: String) {
 
     fun <R : Any> getConstructor(klass: KClass<R>) = klass.constructors.filter { !it.parameters.any { (it.type.jvmErasure == klass) } }.toList()
 
-    inline fun <A, B, reified R : Any> ((A, B) -> R).create(a: A = any(), b: B = any()): R {
+    operator inline fun <A, B, reified R : Any> ((A, B) -> R).get(a: A = any(), b: B = any()): R {
         val token = ""
         val klass = R::class
         val type = R::class.createType()

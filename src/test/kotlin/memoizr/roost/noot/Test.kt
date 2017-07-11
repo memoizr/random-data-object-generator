@@ -1,6 +1,5 @@
 package memoizr.roost.noot
 
-import memoizr.roost.Seed
 import memoizr.roost.aRandom
 import memoizr.roost.custom
 import memoizr.roost.print
@@ -29,7 +28,7 @@ class Test {
 //        Seed.seed = 1094900
 
         custom {
-            ::SimpleClass.create(aString() + " @ " + aString() + "." + choose("com", "org", "co.uk"))
+            ::SimpleClass.call(aString() + " @ " + aString() + "." + choose("com", "org", "co.uk"))
         }
 
         x.print()

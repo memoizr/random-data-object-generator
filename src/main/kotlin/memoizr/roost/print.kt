@@ -1,6 +1,6 @@
 package memoizr.roost
 
-internal fun <T : Any> T.print() = this.apply {
+fun <T : Any> T.print() = this.apply {
     val stackFrame = Thread.currentThread().stackTrace[2]
     val className = stackFrame.className
     val methodName = stackFrame.methodName
