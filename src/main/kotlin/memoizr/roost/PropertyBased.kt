@@ -58,11 +58,12 @@ class PropertyBased(val token: String, val mutableMap: MutableMap<KType, Int>) {
         return instantiateClass(type, tkn) as T
     }
 
-    data class TypedKType<T : Any>(val t: KClass<T>, val type: KType)
-
-    inline operator fun <reified T : Any> KClass<out T>.invoke(vararg types: TypedKType<*>): TypedKType<T> =
-            TypedKType(T::class, this.createType(
-                    types.zip(this.typeParameters.map { it.variance })
-                            .map { KTypeProjection(it.second, it.first.type) }
-            ))
 }
+
+data class TypedKType<T : Any>(val t: KClass<T>, val type: KType)
+
+inline operator fun <reified T : Any> KClass<out T>.invoke(vararg types: TypedKType<*>): TypedKType<T> =
+        TypedKType(T::class, this.createType(
+                types.zip(this.typeParameters.map { it.variance })
+                        .map { KTypeProjection(it.second, it.first.type) }
+        ))

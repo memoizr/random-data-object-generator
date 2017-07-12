@@ -10,6 +10,7 @@ import java.util.*
 import kotlin.reflect.*
 import kotlin.reflect.KVariance.INVARIANT
 import kotlin.reflect.full.createType
+import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaMethod
@@ -76,7 +77,7 @@ fun instantiateClass(type: KType, token: String = "", parentClasses: Set<KClass<
     fun KClass<out Any>.isAnArray() = this.java.isArray
     fun KClass<out Any>.isAnEnum() = this.java.isEnum
     fun KClass<out Any>.isAnObject() = this.objectInstance != null
-    fun KClass<out Any>.thereIsACustomFactory() = this in objectFactory
+    fun thereIsACustomFactory() = type in objectRepo
     fun isNullable(): Boolean = type.isMarkedNullable && pseudoRandom(token).nextInt() % 2 == 0
 
     val klass = getArrayClass(type)
@@ -84,7 +85,7 @@ fun instantiateClass(type: KType, token: String = "", parentClasses: Set<KClass<
 
     return when {
         isNullable() -> null
-        klass.thereIsACustomFactory() -> objectFactory[klass]?.invoke(type, parentClasses, token)
+        thereIsACustomFactory() -> objectRepo[type]?.invoke(type, parentClasses, token)
         klass.isAnObject() -> klass.objectInstance
         klass.isAnEnum() -> klass.java.enumConstants[anInt(token, max = klass.java.enumConstants.size)]
         klass.isAnArray() -> instantiateArray(type, token, parentClasses, klass)
@@ -208,5 +209,22 @@ private val classesMap: MutableMap<KClass<out Any>, List<Class<out Any>>> = muta
 
 fun pseudoRandom(token: String): Random = Random(Seed.seed + hashString(token))
 
-val objectFactory = mutableMapOf<KClass<out Any>, (KType, Set<KClass<*>>, String) -> Any>()
+//val objectFactory = mutableMapOf<KType, (KType, Set<KClass<*>>, String) -> Any>()
+
+object objectRepo {
+    private val objectFactory = mutableMapOf<KType, (KType, Set<KClass<*>>, String) -> Any>()
+
+    operator fun set(type: KType, factory: (KType, Set<KClass<*>>, String) -> Any): objectRepo  {
+        objectFactory[type] = factory
+        return this
+    }
+
+    operator fun get(type: KType): ((KType, Set<KClass<*>>, String) -> Any)?  {
+        return objectFactory[type] ?: objectFactory[type.jvmErasure.starProjectedType]
+    }
+
+    operator fun contains(type: KType): Boolean {
+        return get(type)?.let { true } ?: false
+    }
+}
 

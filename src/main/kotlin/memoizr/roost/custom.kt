@@ -1,5 +1,7 @@
 package memoizr.roost
 
+import kotlin.reflect.full.starProjectedType
+
 inline fun <reified T : Any> custom(noinline t: Creator.() -> T) {
-    objectFactory.put(T::class, { type, past, token -> t(Creator(token)) })
+    objectRepo[T::class.starProjectedType] = { type, past, token -> t(Creator(token)) }
 }
