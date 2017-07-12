@@ -16,6 +16,7 @@ object CustomizationForTest : Customizer {
     val p3 by customize<Param3<Int, Int, Int>>().using<Int, Int, Int>(::Param3) { it[1, 2, 3] }
     val p4 by customize<Param4<Int, Int, Int, Int>>().using<Int, Int, Int, Int>(::Param4) { it[1, 2, 3, 4] }
     val p5 by customize<Param5<Int, Int, Int, Int, Int>>().using<Int, Int, Int, Int, Int>(::Param5) { it[1, 2, 3, 4, 5] }
+    val p6 by customize<Param6<Int, Int, Int, Int, Int, Int>>().using<Int, Int, Int, Int, Int, Int>(::Param6) { it[1, 2, 3, 4, 5, 6] }
 }
 
 class CustomizeTest {
@@ -52,65 +53,58 @@ class CustomizeTest {
 }
 
 class customize<T> {
-
-    fun using(fn: () -> T, g: Creator.(() -> T) -> T): Bars0<T> {
-        val bars0 = Bars0(fn, g)
-        return bars0
-    }
-    fun <A> using(fn: (A) -> T, g: Creator.((A) -> T) -> T) = Bars1(fn, g)
-    fun <A, B> using(fn: (A, B) -> T, g: Creator.((A, B) -> T) -> T) = Bars2(fn, g)
-    fun <A, B, C> using(fn: (A, B, C) -> T, g: Creator.((A, B, C) -> T) -> T) = Bars3(fn, g)
-    fun <A, B, C, D> using(fn: (A, B, C, D) -> T, g: Creator.((A, B, C, D) -> T) -> T) = Bars4(fn, g)
-    fun <A, B, C, D, E> using(fn: (A, B, C, D, E) -> T, g: Creator.((A, B, C, D, E) -> T) -> T) = Bars5(fn, g)
-    fun <A, B, C, D, E, F> using(fn: (A, B, C, D, E, F) -> T, g: Creator.((A, B, C, D, E, F) -> T) -> T) = Bars6(fn, g)
+    fun using(fn: () -> T, g: Creator.(() -> T) -> T) = Delegate0(fn, g)
+    fun <A> using(fn: (A) -> T, g: Creator.((A) -> T) -> T) = Delegate1(fn, g)
+    fun <A, B> using(fn: (A, B) -> T, g: Creator.((A, B) -> T) -> T) = Delegate2(fn, g)
+    fun <A, B, C> using(fn: (A, B, C) -> T, g: Creator.((A, B, C) -> T) -> T) = Delegate3(fn, g)
+    fun <A, B, C, D> using(fn: (A, B, C, D) -> T, g: Creator.((A, B, C, D) -> T) -> T) = Delegate4(fn, g)
+    fun <A, B, C, D, E> using(fn: (A, B, C, D, E) -> T, g: Creator.((A, B, C, D, E) -> T) -> T) = Delegate5(fn, g)
+    fun <A, B, C, D, E, F> using(fn: (A, B, C, D, E, F) -> T, g: Creator.((A, B, C, D, E, F) -> T) -> T) = Delegate6(fn, g)
 }
-class Bars0<T>(val fn: () -> T, val g: Creator.(() -> T) -> T) {
 
+class Delegate0<T>(val fn: () -> T, val g: Creator.(() -> T) -> T) {
     operator fun getValue(a: Any, b: KProperty<*>): T {
         objectRepo[b.returnType] = { _, _, token -> Creator(token).g(fn) as Any }
         return null as T
     }
 }
 
-class Bars1<A, T>(val fn: (A) -> T, val g: Creator.((A) -> T) -> T) {
-
-    operator fun getValue(a: Any, b: KProperty<*>): T {
-        objectRepo[b.returnType] = { type, past, token -> Creator("").g(fn) as Any }
-        return null as T
-    }
-}
-
-class Bars2<A, B, T>(val fn: (A, B) -> T, val g: Creator.((A, B) -> T) -> T) {
-    operator fun getValue(a: Any, b: KProperty<*>): T {
-
-        objectRepo[b.returnType] = { type, past, token -> Creator("").g(fn) as Any }
-        return null as T
-    }
-}
-
-class Bars3<A, B, C, T>(val fn: (A, B, C) -> T, val g: Creator.((A, B, C) -> T) -> T) {
-    operator fun getValue(a: Any, b: KProperty<*>): T {
-
-        objectRepo[b.returnType] = { type, past, token -> Creator("").g(fn) as Any }
-        return null as T
-    }
-}
-
-class Bars4<A, B, C, D, T>(val fn: (A, B, C, D) -> T, val g: Creator.((A, B, C, D) -> T) -> T) {
-    operator fun getValue(a: Any, b: KProperty<*>): T {
-        objectRepo[b.returnType] = { type, past, token -> Creator("").g(fn) as Any }
-        return null as T
-    }
-}
-
-class Bars5<A, B, C, D, E, T>(val fn: (A, B, C, D, E) -> T, val g: Creator.((A, B, C, D, E) -> T) -> T) {
+class Delegate1<A, T>(val fn: (A) -> T, val g: Creator.((A) -> T) -> T) {
     operator fun getValue(a: Any, b: KProperty<*>): T {
         objectRepo[b.returnType] = { _, _, token -> Creator(token).g(fn) as Any }
         return null as T
     }
 }
 
-class Bars6<A, B, C, D, E, F, T>(val fn: (A, B, C, D, E, F) -> T, val g: Creator.((A, B, C, D, E, F) -> T) -> T) {
+class Delegate2<A, B, T>(val fn: (A, B) -> T, val g: Creator.((A, B) -> T) -> T) {
+    operator fun getValue(a: Any, b: KProperty<*>): T {
+        objectRepo[b.returnType] = { _, _, token -> Creator(token).g(fn) as Any }
+        return null as T
+    }
+}
+
+class Delegate3<A, B, C, T>(val fn: (A, B, C) -> T, val g: Creator.((A, B, C) -> T) -> T) {
+    operator fun getValue(a: Any, b: KProperty<*>): T {
+        objectRepo[b.returnType] = { _, _, token -> Creator(token).g(fn) as Any }
+        return null as T
+    }
+}
+
+class Delegate4<A, B, C, D, T>(val fn: (A, B, C, D) -> T, val g: Creator.((A, B, C, D) -> T) -> T) {
+    operator fun getValue(a: Any, b: KProperty<*>): T {
+        objectRepo[b.returnType] = { _, _, token -> Creator(token).g(fn) as Any }
+        return null as T
+    }
+}
+
+class Delegate5<A, B, C, D, E, T>(val fn: (A, B, C, D, E) -> T, val g: Creator.((A, B, C, D, E) -> T) -> T) {
+    operator fun getValue(a: Any, b: KProperty<*>): T {
+        objectRepo[b.returnType] = { _, _, token -> Creator(token).g(fn) as Any }
+        return null as T
+    }
+}
+
+class Delegate6<A, B, C, D, E, F, T>(val fn: (A, B, C, D, E, F) -> T, val g: Creator.((A, B, C, D, E, F) -> T) -> T) {
     operator fun getValue(a: Any, b: KProperty<*>): T {
         objectRepo[b.returnType] = { _, _, token -> Creator(token).g(fn) as Any }
         return null as T

@@ -56,6 +56,19 @@ class Creator(var token: String) {
         )
     }
 
+    operator inline fun <reified A, reified B, reified C, reified D, reified E, reified F, reified R : Any>
+            ((A, B, C, D, E, F) -> R).get(a: A = any(), b: B = any(), c: C = any(), d: D = any(), e: E = any(), f: F): R {
+        val params = getParameters(R::class, A::class, B::class, C::class, D::class, E::class, F::class)
+        return invoke(
+                a or new<A>(params[0], token),
+                b or new<B>(params[1], token),
+                c or new<C>(params[2], token),
+                d or new<D>(params[3], token),
+                e or new<E>(params[4], token),
+                f or new<F>(params[5], token)
+        )
+    }
+
     fun <R : Any> getConstructor(klass: KClass<R>) = klass.constructors.filter { !it.parameters.any { (it.type.jvmErasure == klass) } }.toList()
 
     infix fun <T> T.or(other: T) = if (this == some) other else this
@@ -69,7 +82,8 @@ class Creator(var token: String) {
                             .zip(classes)
                             .all {
                                 it.first.type.jvmErasure == it.second ||
-                                it.first.type.jvmErasure.java.isAssignableFrom(it.second.java) }
+                                        it.first.type.jvmErasure.java.isAssignableFrom(it.second.java)
+                            }
         }.first()
         defaultConstructor.isAccessible = true
         val constructorParameters: List<KParameter> = defaultConstructor.parameters

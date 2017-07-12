@@ -8,29 +8,10 @@ import java.io.Serializable
 
 class Test {
     val clip by aRandom<Clip>()
-    val aUser by aRandom<String>()
-
-    @Test
-    fun user() {
-        aUser.print()
-    }
 
     @Test
     fun aTest() {
         clip.print()
-    }
-
-    val x by aRandom<SimpleClass>()
-
-    @Test
-    fun ff() {
-//        Seed.seed = 1094900
-
-//        custom {
-//            ::SimpleClass.call(aString() + " @ " + aString() + "." + choose("com", "org", "co.uk"))
-//        }
-
-        x.print()
     }
 
 }
