@@ -1,7 +1,6 @@
 package memoizr.roost.noot
 
 import memoizr.roost.aRandom
-import memoizr.roost.custom
 import memoizr.roost.print
 import org.junit.Test
 import java.io.File
@@ -27,9 +26,9 @@ class Test {
     fun ff() {
 //        Seed.seed = 1094900
 
-        custom {
-            ::SimpleClass.call(aString() + " @ " + aString() + "." + choose("com", "org", "co.uk"))
-        }
+//        custom {
+//            ::SimpleClass.call(aString() + " @ " + aString() + "." + choose("com", "org", "co.uk"))
+//        }
 
         x.print()
     }

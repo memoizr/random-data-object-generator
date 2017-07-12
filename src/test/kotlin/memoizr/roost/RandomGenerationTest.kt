@@ -3,6 +3,7 @@
 package memoizr.roost
 
 import com.memoizr.assertk.*
+import memoizr.customize
 import memoizr.roost.noot.*
 import org.junit.Before
 import org.junit.Test
@@ -89,13 +90,15 @@ class RandomGenerationTest {
         expect that aClassWithEnum.enum isInstance of<TheEnum>()
     }
 
+    val x by customize<BigDecimal>().using<Long>(::BigDecimal) { it[any()] }
+    @Before
+    fun xx() {
+        x == null
+    }
+
     @Test
     fun `it allows to customize object creation`() {
-        custom {
-            val bigDecimal: (Long) -> BigDecimal = ::BigDecimal
-            bigDecimal[any()]
-        }
-
+        x
         expect that aClassWithBigDecimal isInstance of<ClassWithBigDecimal>()
     }
 
